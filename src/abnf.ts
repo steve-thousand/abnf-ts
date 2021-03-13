@@ -2,6 +2,13 @@ export interface RuleElement {
 
 }
 
+export class RuleRef implements RuleElement {
+    ruleRef: string
+    constructor(ruleRef: string) {
+        this.ruleRef = ruleRef
+    }
+}
+
 abstract class Sequence implements RuleElement {
     elements: RuleElement[]
     constructor(elements: RuleElement[]) {

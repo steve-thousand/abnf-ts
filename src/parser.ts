@@ -28,7 +28,7 @@ type RepetitionState = {
 
 function parseElements(elementsString: string, crawlState: CrawlState = { index: 0 }, terminateOn = undefined): abnf.RuleElement[] {
     const elements = []
-    let repetitionState = null
+    let repetitionState: RepetitionState = null
     while (crawlState.index < elementsString.length) {
         const char = elementsString[crawlState.index]
         if (char === terminateOn) {
@@ -63,7 +63,7 @@ function parseElements(elementsString: string, crawlState: CrawlState = { index:
 
                 //build atLeast number
                 let atLeastStr = []
-                while (isDecimal(elementsString[crawlState.index])) {
+                while (isDigit(elementsString[crawlState.index])) {
                     atLeastStr.push(elementsString[crawlState.index])
                     crawlState.index++
                 }
@@ -75,7 +75,7 @@ function parseElements(elementsString: string, crawlState: CrawlState = { index:
 
                     //build atLeast number
                     let atMostStr = []
-                    while (isDecimal(elementsString[crawlState.index])) {
+                    while (isDigit(elementsString[crawlState.index])) {
                         atMostStr.push(elementsString[crawlState.index])
                         crawlState.index++
                     }
@@ -104,9 +104,25 @@ function parseElements(elementsString: string, crawlState: CrawlState = { index:
                 innerElements = parseElements(elementsString, crawlState, "}")
                 element = new abnf.Group(innerElements)
                 break
+            default:
+                //if no other rules apply, we are probably crawling over a rule name
+                if (isAlpha(char)) {
+                    let ruleName = []
+                    ruleName.push(char)
+                    crawlState.index++
+                    while (isAlpha(elementsString[crawlState.index]) ||
+                        isDigit(elementsString[crawlState.index]) ||
+                        elementsString[crawlState.index] === "-") {
+                        ruleName.push(elementsString[crawlState.index])
+                        crawlState.index++
+                    }
+                    crawlState.index--
+                    element = new abnf.RuleRef(ruleName.join(""))
+                }
         }
 
         if (element) {
+
             if (repetitionState) {
                 elements.push(new abnf.Repetition(
                     repetitionState.atLeast,
@@ -124,20 +140,10 @@ function parseElements(elementsString: string, crawlState: CrawlState = { index:
     return elements
 }
 
-function isDecimal(char: string): boolean {
-    switch (char) {
-        case "0":
-        case "1":
-        case "2":
-        case "3":
-        case "4":
-        case "5":
-        case "6":
-        case "7":
-        case "8":
-        case "9":
-            return true
-        default:
-            return false
-    }
+function isAlpha(char: string) {
+    return (/^[a-zA-Z]$/).test(char)
+}
+
+function isDigit(char: string): boolean {
+    return (/^[0-9]$/).test(char)
 }
