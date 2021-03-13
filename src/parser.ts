@@ -1,16 +1,12 @@
 import * as abnf from "./abnf"
 
-/**
- * IETF guide for Backus-Naur https://tools.ietf.org/html/rfc5234#section-4
- */
-
 export function parseGrammar(grammar: string): abnf.Rule[] {
     return grammar.split("\n").map((line) => {
         return parseRule(line)
     })
 }
 
-export function parseRule(ruleDef: string): abnf.Rule {
+function parseRule(ruleDef: string): abnf.Rule {
     const ruleParts = ruleDef.split("=")
     const ruleName = ruleParts[0].trim()
     const elements = parseElements(ruleParts[1].trim())
@@ -98,10 +94,10 @@ function parseElements(elementsString: string, crawlState: CrawlState = { index:
                 innerElements = parseElements(elementsString, crawlState, "]")
                 element = new abnf.Optional(innerElements)
                 break
-            case "{":
+            case "(":
                 //group
                 crawlState.index++
-                innerElements = parseElements(elementsString, crawlState, "}")
+                innerElements = parseElements(elementsString, crawlState, ")")
                 element = new abnf.Group(innerElements)
                 break
             default:

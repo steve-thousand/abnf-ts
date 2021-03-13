@@ -20,7 +20,7 @@ describe('Parser tests', function () {
         ])
     })
     it('Group', function () {
-        const rules: abnf.Rule[] = parseGrammar('rule = {"abc"}')
+        const rules: abnf.Rule[] = parseGrammar('rule = ("abc")')
         expect(rules).to.deep.equal([
             new abnf.Rule('rule', [
                 new abnf.Group([new abnf.Literal('abc')])
@@ -65,6 +65,17 @@ describe('Parser tests', function () {
             expect(rules).to.deep.equal([
                 new abnf.Rule('rule', [
                     new abnf.Repetition(5, 5, new abnf.Literal('abc'))
+                ])
+            ])
+        })
+        it('Group Repetition', function () {
+            const rules: abnf.Rule[] = parseGrammar('rule = 5( "abc" foo )')
+            expect(rules).to.deep.equal([
+                new abnf.Rule('rule', [
+                    new abnf.Repetition(5, 5, new abnf.Group([
+                        new abnf.Literal('abc'),
+                        new abnf.RuleRef('foo')
+                    ]))
                 ])
             ])
         })
