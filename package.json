@@ -1,0 +1,30 @@
+{
+  "name": "backus-naur-ts",
+  "version": "0.1.0",
+  "description": "Backus-Naur grammar parser",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha -r ts-node/register test/**/*.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/steve-thousand/backus-naur-ts.git"
+  },
+  "keywords": [
+    "backus-naur",
+    "grammar"
+  ],
+  "author": "steve-thousand",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/steve-thousand/backus-naur-ts/issues"
+  },
+  "homepage": "https://github.com/steve-thousand/backus-naur-ts#readme",
+  "devDependencies": {
+    "@types/mocha": "^8.0.1",
+    "chai": "*",
+    "mocha": "*",
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.7"
+  }
+}
