@@ -49,8 +49,8 @@ describe('AST tests', function () {
             expect(node).to.be.null
         });
 
-        it('"foo bar foo" should match murmur', function () {
-            const node: SyntaxNode = murmur.consume(new StringStream("foo bar foo"))
+        it('"foobarfoo" should match murmur', function () {
+            const node: SyntaxNode = murmur.consume(new StringStream("foobarfoo"))
             expect(node).to.not.be.null
             expect(node.ruleName).to.equal('murmur')
 
