@@ -1,15 +1,23 @@
 import * as abnf from "./abnf"
 
 export function parseRules(grammar: string): abnf.Rule[] {
-    return grammar.split("\n").map((line) => {
-        return parseRule(line)
-    })
+    const rulesMap: Map<string, abnf.Rule> = new Map()
+    const rules = []
+    const ruleStrings = grammar.split("\n");
+    //we need to parse rules in reverse order
+    for (var i = ruleStrings.length - 1; i >= 0; i--) {
+        const rule = parseRule(ruleStrings[i], rulesMap);
+        rulesMap.set(rule.name, rule)
+        rules.push(rule)
+    }
+    rules.reverse()
+    return rules
 }
 
-function parseRule(ruleDef: string): abnf.Rule {
+function parseRule(ruleDef: string, rules: Map<string, abnf.Rule>): abnf.Rule {
     const ruleParts = ruleDef.split("=")
     const ruleName = ruleParts[0].trim()
-    const elements = parseElements(ruleParts[1].trim())
+    const elements = parseElements(ruleParts[1].trim(), rules)
     return new abnf.Rule(ruleName, elements)
 }
 
@@ -22,7 +30,7 @@ type RepetitionState = {
     atMost: number
 }
 
-function parseElements(elementsString: string, crawlState: CrawlState = { index: 0 }, terminateOn = undefined): abnf.RuleElement[] {
+function parseElements(elementsString: string, rules: Map<string, abnf.Rule>, crawlState: CrawlState = { index: 0 }, terminateOn = undefined): abnf.RuleElement[] {
     const elements = []
     const alternative_indices: number[] = []
     let repetitionState: RepetitionState = null
@@ -92,13 +100,13 @@ function parseElements(elementsString: string, crawlState: CrawlState = { index:
             case "[":
                 //option
                 crawlState.index++
-                innerElements = parseElements(elementsString, crawlState, "]")
+                innerElements = parseElements(elementsString, rules, crawlState, "]")
                 element = new abnf.Optional(innerElements)
                 break
             case "(":
                 //group
                 crawlState.index++
-                innerElements = parseElements(elementsString, crawlState, ")")
+                innerElements = parseElements(elementsString, rules, crawlState, ")")
                 element = new abnf.Group(innerElements)
                 break
             case "/":
@@ -108,17 +116,21 @@ function parseElements(elementsString: string, crawlState: CrawlState = { index:
             default:
                 //if no other rules apply, we are probably crawling over a rule name
                 if (isAlpha(char)) {
-                    let ruleName = []
-                    ruleName.push(char)
+                    let ruleNameStr = []
+                    ruleNameStr.push(char)
                     crawlState.index++
                     while (isAlpha(elementsString[crawlState.index]) ||
                         isDigit(elementsString[crawlState.index]) ||
                         elementsString[crawlState.index] === "-") {
-                        ruleName.push(elementsString[crawlState.index])
+                        ruleNameStr.push(elementsString[crawlState.index])
                         crawlState.index++
                     }
                     crawlState.index--
-                    element = new abnf.RuleRef(ruleName.join(""))
+                    const ruleName = ruleNameStr.join("")
+                    if (!rules.has(ruleName)) {
+                        throw "Failed to find rule " + ruleName
+                    }
+                    element = new abnf.RuleRef(rules.get(ruleName))
                 }
         }
 
