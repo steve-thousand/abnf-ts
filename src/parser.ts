@@ -1,6 +1,6 @@
 import * as abnf from "./abnf"
 
-export function parseGrammar(grammar: string): abnf.Rule[] {
+export function parseRules(grammar: string): abnf.Rule[] {
     return grammar.split("\n").map((line) => {
         return parseRule(line)
     })
@@ -24,6 +24,7 @@ type RepetitionState = {
 
 function parseElements(elementsString: string, crawlState: CrawlState = { index: 0 }, terminateOn = undefined): abnf.RuleElement[] {
     const elements = []
+    const alternative_indices: number[] = []
     let repetitionState: RepetitionState = null
     while (crawlState.index < elementsString.length) {
         const char = elementsString[crawlState.index]
@@ -100,6 +101,10 @@ function parseElements(elementsString: string, crawlState: CrawlState = { index:
                 innerElements = parseElements(elementsString, crawlState, ")")
                 element = new abnf.Group(innerElements)
                 break
+            case "/":
+                //alternative
+                alternative_indices.push(elements.length)
+                break
             default:
                 //if no other rules apply, we are probably crawling over a rule name
                 if (isAlpha(char)) {
@@ -133,6 +138,18 @@ function parseElements(elementsString: string, crawlState: CrawlState = { index:
 
         crawlState.index++
     }
+
+    if (alternative_indices.length > 0) {
+        let lastIndex = 0
+        const alternativeRuleSets = []
+        for (let alternative_index of alternative_indices) {
+            alternativeRuleSets.push(elements.slice(lastIndex, alternative_index))
+            lastIndex = alternative_index
+        }
+        alternativeRuleSets.push(elements.slice(lastIndex))
+        return [new abnf.Alternative(alternativeRuleSets)]
+    }
+
     return elements
 }
 

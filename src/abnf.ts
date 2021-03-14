@@ -1,6 +1,4 @@
-export interface RuleElement {
-
-}
+export interface RuleElement { }
 
 export class RuleRef implements RuleElement {
     ruleRef: string
@@ -18,6 +16,13 @@ abstract class Sequence implements RuleElement {
 
 export class Group extends Sequence { }
 export class Optional extends Sequence { }
+
+export class Alternative implements RuleElement {
+    alternativeElementSets: RuleElement[][]
+    constructor(alternativeElementSets: RuleElement[][]) {
+        this.alternativeElementSets = alternativeElementSets
+    }
+}
 
 export class Literal implements RuleElement {
     value: string
