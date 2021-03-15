@@ -1,20 +1,16 @@
 import { TokenStream, TokenStreamLease, TokenStreamPredicate, LiteralPredicate } from './reader';
-import { SyntaxNode } from './ast'
-
-export interface AST {
-
-}
+import { SyntaxNode, RuleSyntaxNode, TokenSyntaxNode, SimpleSyntaxNode } from './ast'
 
 export abstract class RuleElement {
     /**
      * Attempts to consume a portion of a TokenStream that matches this element.
-     * @param stream {@type TokenStream} to attemp to consume
-     * @return an AST node that claims a lease on a matching portion of the stream. null, if no match found
+     * @param stream {@link TokenStream} to attemp to consume
+     * @return a {@link SyntaxNode} that claims a lease on a matching portion of the stream. null, if no match found
      */
     consume(stream: TokenStream): SyntaxNode {
         const lease: TokenStreamLease = stream.consume(this.getPredicate())
         if (lease !== null) {
-            return new SyntaxNode(undefined, lease)
+            return new TokenSyntaxNode(lease)
         } else {
             return null
         }
@@ -23,6 +19,9 @@ export abstract class RuleElement {
     abstract getPredicate(): TokenStreamPredicate
 }
 
+/**
+ * An element referencing a {@link Rule} by name.
+ */
 export class RuleRef extends RuleElement {
 
     rule: Rule
@@ -37,6 +36,10 @@ export class RuleRef extends RuleElement {
     }
 }
 
+/**
+ * A class wrapping a sequence of {@link RuleElement | RuleElements}. All elements must successfully match the token
+ * stream.
+ */
 abstract class Sequence extends RuleElement {
 
     elements: RuleElement[]
@@ -54,6 +57,9 @@ abstract class Sequence extends RuleElement {
 export class Group extends Sequence { }
 export class Optional extends Sequence { }
 
+/**
+ * Separates a series of rule element sets, and at least one must match the token stream.
+ */
 export class Alternative extends RuleElement {
 
     alternativeElementSets: RuleElement[][]
@@ -68,6 +74,9 @@ export class Alternative extends RuleElement {
     }
 }
 
+/**
+ * Represents a literal character sequence that must be matched exactly.
+ */
 export class Literal extends RuleElement {
 
     predicate: TokenStreamPredicate
@@ -82,6 +91,10 @@ export class Literal extends RuleElement {
     }
 }
 
+/**
+ * Wraps a {@link RuleElement} with the numerical information describing the minimum and maximum amount of times the
+ * token stream must match it.
+ */
 export class Repetition extends RuleElement {
 
     atleast: number
@@ -95,8 +108,39 @@ export class Repetition extends RuleElement {
         this.element = element
     }
 
+    /**
+     * Overrides superclass {@link RuleElement#consume} method to attempt matching multiple times, according to the
+     * repetition minimum and maximum requirements.
+     * @override
+     */
+    consume(stream: TokenStream): SyntaxNode {
+        let matched = 0
+        const wrapperNode = new SimpleSyntaxNode()
+        while (true) {
+            //exit early if we have reached the maximum amount
+            if (matched > this.atMost) {
+                break
+            }
+            const childNode = super.consume(stream)
+            if (childNode == null) {
+                break
+            } else {
+                wrapperNode.addChild(childNode)
+            }
+            matched++
+        }
+
+        //release and return null if we have not met the minimum requirement
+        if (wrapperNode.children.length < this.atleast || wrapperNode.children.length > this.atMost) {
+            wrapperNode.release()
+            return null
+        } else {
+            return wrapperNode
+        }
+    }
+
     getPredicate(): TokenStreamPredicate {
-        throw new Error('Method not implemented.');
+        return this.element.getPredicate()
     }
 }
 
@@ -116,11 +160,11 @@ export class Rule {
 
     /**
      * Attempts to consume a portion of a TokenStream that matches this element.
-     * @param stream {@type TokenStream} to attemp to consume
+     * @param stream {@link TokenStream} to attemp to consume
      * @return an AST node that claims a lease on a matching portion of the stream. null, if no match found
      */
-    consume(stream: TokenStream): SyntaxNode {
-        const node = new SyntaxNode(this.name, undefined)
+    consume(stream: TokenStream): RuleSyntaxNode {
+        const node = new RuleSyntaxNode(this.name)
         for (let element of this.elements) {
             let childNode
             if (element instanceof RuleRef) {

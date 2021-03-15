@@ -1,14 +1,8 @@
 import { TokenStreamLease } from './reader';
 
-export class SyntaxNode {
-    ruleName: String
-    tokenStreamLease: TokenStreamLease
-    children: SyntaxNode[] = []
+export abstract class SyntaxNode {
 
-    constructor(ruleName: string, tokenStreamLease: TokenStreamLease) {
-        this.ruleName = ruleName
-        this.tokenStreamLease = tokenStreamLease
-    }
+    children: SyntaxNode[] = []
 
     addChild(child: SyntaxNode): void {
         this.children.push(child)
@@ -19,14 +13,45 @@ export class SyntaxNode {
      * will release this node's claim on any portion of the token stream.
      */
     release(): void {
-        //TODO: safe?
-        if (this.tokenStreamLease !== undefined) {
-            this.tokenStreamLease.release()
-        }
         //release the children nodes in reverse order
         for (var i = this.children.length - 1; i >= 0; i--) {
             this.children[i].release()
         }
         //TODO: how to clean up best. delete? set null?
+    }
+}
+
+export class SimpleSyntaxNode extends SyntaxNode {
+    constructor() {
+        super()
+    }
+}
+
+export class TokenSyntaxNode extends SyntaxNode {
+
+    private tokenStreamLease: TokenStreamLease
+
+    constructor(tokenStreamLease: TokenStreamLease) {
+        super()
+        this.tokenStreamLease = tokenStreamLease
+    }
+
+    release(): void {
+        //TODO: safe?
+        //need to release this token stream lease
+        if (this.tokenStreamLease !== undefined) {
+            this.tokenStreamLease.release()
+        }
+        super.release()
+    }
+}
+
+export class RuleSyntaxNode extends SyntaxNode {
+
+    ruleName: String
+
+    constructor(ruleName: string) {
+        super()
+        this.ruleName = ruleName
     }
 }

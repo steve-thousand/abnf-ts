@@ -1,6 +1,3 @@
-
-import { Readable } from "node:stream";
-
 /**
  * Logic for how to handle an input stream of tokens or text is contained here.
  */
@@ -95,22 +92,5 @@ export class StringStream implements TokenStream {
 
     push(char: string) {
         this.index--;
-    }
-}
-
-/**
- * TODO: ???
- */
-class PushbackStream {
-    private readable: Readable
-    private buffer: string[] = []
-    read(): string {
-        if (this.buffer.length > 0) {
-            return this.buffer.splice(0, 1)[0]
-        }
-        return this.readable.read(1)
-    }
-    pushback(chars: string[]) {
-        this.buffer = this.buffer.concat(chars)
     }
 }
