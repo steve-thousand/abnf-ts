@@ -4,7 +4,7 @@
   "description": "Backus-Naur grammar parser",
   "main": "index.js",
   "scripts": {
-    "test": "mocha -r ts-node/register test/**/*.ts"
+    "test": "nyc mocha -r ts-node/register test/**/*.ts"
   },
   "repository": {
     "type": "git",
@@ -24,7 +24,9 @@
     "@types/mocha": "^8.0.1",
     "@types/node": "^14.14.34",
     "chai": "*",
+    "codecov": "^3.8.1",
     "mocha": "*",
+    "nyc": "^15.1.0",
     "ts-node": "^8.10.2",
     "typescript": "^3.9.7"
   }
