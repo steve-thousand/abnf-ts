@@ -58,6 +58,24 @@ abstract class Sequence extends RuleElement {
         this.elements = elements;
     }
 
+    /**
+     * Overrides superclass {@link RuleElement#consume} method to attempt matching on all elements contained in this 
+     * sequence
+     * @override
+     */
+    consume(stream: TokenStream): SyntaxNode {
+        const wrapperNode = new SimpleSyntaxNode()
+        for (let element of this.elements) {
+            const node = element.consume(stream)
+            if (node == null) {
+                //failed to match on this element in the sequence
+                wrapperNode.release()
+                return null
+            }
+        }
+        return wrapperNode
+    }
+
     getPredicate(): TokenStreamPredicate {
         throw new Error('Method not implemented.');
     }

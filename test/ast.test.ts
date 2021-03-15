@@ -61,52 +61,60 @@ describe('AST tests', function () {
     })
 
     describe('Repetition', function () {
-        const rules = parseRules('foo = 2*4"abc"')
-        const foo = rules[0]
+        describe('foo = 2*4"abc"', function () {
+            const rules = parseRules('foo = 2*4"abc"')
+            const foo = rules[0]
 
-        it('"abc" should not match foo', function () {
-            const node: RuleSyntaxNode = foo.consume(new StringStream("abc"))
-            expect(node).to.be.null
-        });
-        it('"abcabc" should match foo', function () {
-            const node: RuleSyntaxNode = foo.consume(new StringStream("abcabc"))
-            expect(node).to.not.be.null
-            expect(node.ruleName).to.equal('foo')
-        });
-        it('"abcabcabc" should match foo', function () {
-            const node: RuleSyntaxNode = foo.consume(new StringStream("abcabcabc"))
-            expect(node).to.not.be.null
-            expect(node.ruleName).to.equal('foo')
-        });
-        it('"abcabcabcabc" should match foo', function () {
-            const node: RuleSyntaxNode = foo.consume(new StringStream("abcabcabcabc"))
-            expect(node).to.not.be.null
-            expect(node.ruleName).to.equal('foo')
-        });
-        it('"abcabcabcabcabc" should not match foo', function () {
-            const node: RuleSyntaxNode = foo.consume(new StringStream("abcabcabcabcabc"))
-            expect(node).to.be.null
+            it('"abc" should not match foo', function () {
+                const node: RuleSyntaxNode = foo.consume(new StringStream("abc"))
+                expect(node).to.be.null
+            });
+            it('"abcabc" should match foo', function () {
+                const node: RuleSyntaxNode = foo.consume(new StringStream("abcabc"))
+                expect(node).to.not.be.null
+                expect(node.ruleName).to.equal('foo')
+            });
+            it('"abcabcabc" should match foo', function () {
+                const node: RuleSyntaxNode = foo.consume(new StringStream("abcabcabc"))
+                expect(node).to.not.be.null
+                expect(node.ruleName).to.equal('foo')
+            });
+            it('"abcabcabcabc" should match foo', function () {
+                const node: RuleSyntaxNode = foo.consume(new StringStream("abcabcabcabc"))
+                expect(node).to.not.be.null
+                expect(node.ruleName).to.equal('foo')
+            });
+            it('"abcabcabcabcabc" should not match foo', function () {
+                const node: RuleSyntaxNode = foo.consume(new StringStream("abcabcabcabcabc"))
+                expect(node).to.be.null
+            });
         });
     })
 
     describe('Alternation', function () {
-        const rules = parseRules('foo = "abc" / "def"')
-        const foo = rules[0]
+        describe('foo = "abc" / "xyz" "123" / "def"', function () {
+            const rules = parseRules('foo = "abc" / "xyz" "123" / "def"')
+            const foo = rules[0]
 
-        it('"abc" should match foo', function () {
-            const node: RuleSyntaxNode = foo.consume(new StringStream("abc"))
-            expect(node).to.not.be.null
-            expect(node.ruleName).to.equal('foo')
-        });
-
-        it('"def" should match foo', function () {
-            const node: RuleSyntaxNode = foo.consume(new StringStream("def"))
-            expect(node).to.not.be.null
-            expect(node.ruleName).to.equal('foo')
-        });
-        it('"xyz" should not match foo', function () {
-            const node: RuleSyntaxNode = foo.consume(new StringStream("xyz"))
-            expect(node).to.be.null
+            it('"abc" should match foo', function () {
+                const node: RuleSyntaxNode = foo.consume(new StringStream("abc"))
+                expect(node).to.not.be.null
+                expect(node.ruleName).to.equal('foo')
+            });
+            it('"xyz123" should match foo', function () {
+                const node: RuleSyntaxNode = foo.consume(new StringStream("xyz123"))
+                expect(node).to.not.be.null
+                expect(node.ruleName).to.equal('foo')
+            });
+            it('"xyz" should not match foo', function () {
+                const node: RuleSyntaxNode = foo.consume(new StringStream("xyz"))
+                expect(node).to.be.null
+            });
+            it('"def" should match foo', function () {
+                const node: RuleSyntaxNode = foo.consume(new StringStream("def"))
+                expect(node).to.not.be.null
+                expect(node.ruleName).to.equal('foo')
+            });
         });
     });
 });
