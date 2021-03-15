@@ -47,10 +47,12 @@ export class LiteralPredicate implements TokenStreamPredicate {
     }
     apply(stream: TokenStream): TokenStreamLease {
         let index = 0
+        const consumed = []
         while (index < this.value.length) {
             const char = stream.read()
+            consumed.push(char)
             if (this.value.charAt(index) != char) {
-                pushStringIntoStream(this.value, stream)
+                pushStringIntoStream(consumed.join(""), stream)
                 return null
             }
             index++

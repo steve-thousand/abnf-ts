@@ -3,7 +3,6 @@ import { parseRules } from '../src/parser'
 import { StringStream } from '../src/reader'
 import { RuleSyntaxNode } from '../src/ast'
 
-
 describe('AST tests', function () {
 
     describe('Literal concatenation', function () {
@@ -89,4 +88,25 @@ describe('AST tests', function () {
             expect(node).to.be.null
         });
     })
+
+    describe('Alternation', function () {
+        const rules = parseRules('foo = "abc" / "def"')
+        const foo = rules[0]
+
+        it('"abc" should match foo', function () {
+            const node: RuleSyntaxNode = foo.consume(new StringStream("abc"))
+            expect(node).to.not.be.null
+            expect(node.ruleName).to.equal('foo')
+        });
+
+        it('"def" should match foo', function () {
+            const node: RuleSyntaxNode = foo.consume(new StringStream("def"))
+            expect(node).to.not.be.null
+            expect(node.ruleName).to.equal('foo')
+        });
+        it('"xyz" should not match foo', function () {
+            const node: RuleSyntaxNode = foo.consume(new StringStream("xyz"))
+            expect(node).to.be.null
+        });
+    });
 });

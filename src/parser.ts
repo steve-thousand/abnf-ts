@@ -155,10 +155,20 @@ function parseElements(elementsString: string, rules: Map<string, abnf.Rule>, cr
         let lastIndex = 0
         const alternativeRuleSets = []
         for (let alternative_index of alternative_indices) {
-            alternativeRuleSets.push(elements.slice(lastIndex, alternative_index))
+            const slice = elements.slice(lastIndex, alternative_index)
+            if (slice.length == 1) {
+                alternativeRuleSets.push(slice[0])
+            } else {
+                alternativeRuleSets.push(new abnf.Group(slice))
+            }
             lastIndex = alternative_index
         }
-        alternativeRuleSets.push(elements.slice(lastIndex))
+        const slice = elements.slice(lastIndex)
+        if (slice.length == 1) {
+            alternativeRuleSets.push(slice[0])
+        } else {
+            alternativeRuleSets.push(new abnf.Group(slice))
+        }
         return [new abnf.Alternative(alternativeRuleSets)]
     }
 

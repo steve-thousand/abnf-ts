@@ -31,6 +31,15 @@ export class RuleRef extends RuleElement {
         this.rule = rule
     }
 
+    /**
+     * Overrides superclass {@link RuleElement#consume} method to call {@link Rule#consume} on the contained 
+     * {@link Rule} instance.
+     * @override
+     */
+    consume(stream: TokenStream): SyntaxNode {
+        return this.rule.consume(stream)
+    }
+
     getPredicate(): TokenStreamPredicate {
         throw new Error('Method not implemented.');
     }
@@ -62,11 +71,27 @@ export class Optional extends Sequence { }
  */
 export class Alternative extends RuleElement {
 
-    alternativeElementSets: RuleElement[][]
+    alternatives: RuleElement[]
 
-    constructor(alternativeElementSets: RuleElement[][]) {
+    constructor(alternatives: RuleElement[]) {
         super()
-        this.alternativeElementSets = alternativeElementSets
+        this.alternatives = alternatives
+    }
+
+    /**
+     * Overrides superclass {@link RuleElement#consume} method to attempt matching on one of the contained alternative 
+     * sequences
+     * @override
+     */
+    consume(stream: TokenStream): SyntaxNode {
+        for (let alternative of this.alternatives) {
+            const node = alternative.consume(stream);
+            if (node !== null) {
+                return node
+            }
+        }
+        //failed to find a match
+        return null
     }
 
     getPredicate(): TokenStreamPredicate {
@@ -166,13 +191,7 @@ export class Rule {
     consume(stream: TokenStream): RuleSyntaxNode {
         const node = new RuleSyntaxNode(this.name)
         for (let element of this.elements) {
-            let childNode
-            if (element instanceof RuleRef) {
-                //TODO: better
-                childNode = (<RuleRef>element).rule.consume(stream)
-            } else {
-                childNode = element.consume(stream)
-            }
+            let childNode = element.consume(stream)
             if (childNode == null) {
                 node.release()
                 return null

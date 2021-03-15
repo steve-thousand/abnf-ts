@@ -35,8 +35,8 @@ describe('Parser tests', function () {
             expect(rules).to.deep.equal([
                 new abnf.Rule('rule', [
                     new abnf.Alternative([
-                        [new abnf.Literal('abc')],
-                        [new abnf.Literal('def')]
+                        new abnf.Literal('abc'),
+                        new abnf.Literal('def')
                     ])
                 ])
             ])
@@ -46,9 +46,9 @@ describe('Parser tests', function () {
             expect(rules).to.deep.equal([
                 new abnf.Rule('rule', [
                     new abnf.Alternative([
-                        [new abnf.Literal('abc')],
-                        [new abnf.Literal('def')],
-                        [new abnf.Literal('ghi')]
+                        new abnf.Literal('abc'),
+                        new abnf.Literal('def'),
+                        new abnf.Literal('ghi')
                     ])
                 ])
             ])
@@ -58,9 +58,9 @@ describe('Parser tests', function () {
             expect(rules).to.deep.equal([
                 new abnf.Rule('rule', [
                     new abnf.Alternative([
-                        [new abnf.Literal('abc')],
-                        [new abnf.Literal('abc'), new abnf.Literal('def')],
-                        [new abnf.Literal('ghi')]
+                        new abnf.Literal('abc'),
+                        new abnf.Group([new abnf.Literal('abc'), new abnf.Literal('def')]),
+                        new abnf.Literal('ghi')
                     ])
                 ])
             ])
