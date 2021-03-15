@@ -5,6 +5,6 @@ node_js:
 install:
   - npm install
 script:
-  - npm tests
-  
+  - npm run test
+
 after_success: npm run coverage
