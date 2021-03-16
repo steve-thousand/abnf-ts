@@ -1,4 +1,5 @@
 import * as abnf from "./abnf"
+import { CharRange } from "./abnf";
 
 export function parseRules(grammar: string): abnf.Rule[] {
     const rulesMap: Map<string, abnf.Rule> = new Map()
@@ -28,6 +29,19 @@ type CrawlState = {
 type RepetitionState = {
     atLeast: number
     atMost: number
+}
+
+function consumeDecimalValue(crawlState: CrawlState, elementsString: string, base: number) {
+    const digitStr = []
+    while (true) {
+        if (isDigit(elementsString[crawlState.index])) {
+            digitStr.push(elementsString[crawlState.index])
+            crawlState.index++
+        } else {
+            break
+        }
+    }
+    return parseInt(digitStr.join(""), base)
 }
 
 function parseElements(elementsString: string, rules: Map<string, abnf.Rule>, crawlState: CrawlState = { index: 0 }, terminateOn = undefined): abnf.RuleElement[] {
@@ -112,6 +126,32 @@ function parseElements(elementsString: string, rules: Map<string, abnf.Rule>, cr
             case "/":
                 //alternative
                 alternative_indices.push(elements.length)
+                break
+            case "%":
+                // character value or range
+                crawlState.index++
+                let base: number
+                switch (elementsString[crawlState.index]) {
+                    case 'b':
+                        base = 2
+                        break
+                    case 'd':
+                        base = 10
+                        break
+                    case 'x':
+                        base = 16
+                        break
+                }
+                crawlState.index++
+                const value: number = consumeDecimalValue(crawlState, elementsString, base);
+                if (elementsString[crawlState.index] === "-") {
+                    crawlState.index++
+                    const nextValue = consumeDecimalValue(crawlState, elementsString, base)
+                    element = new CharRange(value, nextValue)
+                } else {
+                    element = new CharRange(value, value)
+                }
+
                 break
             default:
                 //if no other rules apply, we are probably crawling over a rule name

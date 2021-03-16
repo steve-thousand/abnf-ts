@@ -61,6 +61,25 @@ export class LiteralPredicate implements TokenStreamPredicate {
     }
 }
 
+export class RangePredicate implements TokenStreamPredicate {
+    minimum: number
+    maximum: number
+    constructor(minimum: number, maximum: number) {
+        this.minimum = minimum
+        this.maximum = maximum
+    }
+    apply(stream: TokenStream): TokenStreamLease {
+        const char = stream.read()
+        const decimal = char.charCodeAt(0);
+        if (decimal >= this.minimum && decimal <= this.maximum) {
+            return new StringStreamLease(char, stream)
+        } else {
+            pushStringIntoStream(char, stream)
+            return null
+        }
+    }
+}
+
 /**
  * Any class that wraps a stream of tokens or text and exposes the ability to read them,
  * acquire potential claims on them, and release them to be re-consumed if need be.

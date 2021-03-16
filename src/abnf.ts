@@ -1,7 +1,11 @@
-import { TokenStream, TokenStreamLease, TokenStreamPredicate, LiteralPredicate } from './reader';
+import { TokenStream, TokenStreamLease, TokenStreamPredicate, LiteralPredicate, RangePredicate } from './reader';
 import { SyntaxNode, RuleSyntaxNode, TokenSyntaxNode, SimpleSyntaxNode } from './ast'
 
 export abstract class RuleElement {
+    /**
+     * Every {@link RuleElement} must define how it should consume a {@link TokenStream}
+     * @param stream the {@link TokenStream} to consume
+     */
     abstract consume(stream: TokenStream): SyntaxNode
 }
 
@@ -51,6 +55,10 @@ abstract class Sequence extends RuleElement {
 
 export class Group extends Sequence { }
 
+/**
+ * Wraps a group of elements that are optional, meaning that they must match the stream a minimum of 0 times and a 
+ * maximum of 1 times
+ */
 export class Optional extends Sequence {
 
     private repetition: Repetition
@@ -91,15 +99,15 @@ export class Alternative extends RuleElement {
 }
 
 /**
- * Represents a literal character sequence that must be matched exactly.
+ * A class which applies a {@link TokenStreamPredicate} to the {@link TokenStream} that it consumes.
  */
-export class Literal extends RuleElement {
+abstract class PredicateElement extends RuleElement {
 
     predicate: TokenStreamPredicate
 
-    constructor(value: string) {
+    constructor(predicate: TokenStreamPredicate) {
         super()
-        this.predicate = new LiteralPredicate(value)
+        this.predicate = predicate
     }
 
     consume(stream: TokenStream): SyntaxNode {
@@ -109,6 +117,24 @@ export class Literal extends RuleElement {
         } else {
             return null
         }
+    }
+}
+
+/**
+ * Represents a literal character sequence that must be matched exactly.
+ */
+export class Literal extends PredicateElement {
+    constructor(value: string) {
+        super(new LiteralPredicate(value))
+    }
+}
+
+/**
+ * Represents a decimal range that a character must fall within, inclusive.
+ */
+export class CharRange extends PredicateElement {
+    constructor(minimum: number, maximum: number) {
+        super(new RangePredicate(minimum, maximum))
     }
 }
 
@@ -193,4 +219,26 @@ export class Rule {
         }
         return node
     }
+}
+
+//https://tools.ietf.org/html/rfc5234#appendix-B.1
+const coreRules = {
+    'ALPHA': new Rule('ALPHA', [
+        new Alternative([
+            new CharRange(0x41, 0x5A),
+            new CharRange(0x61, 0x7A)
+        ])
+    ]),
+    'BIT': new Rule('BIT', [
+        new Alternative([
+            new Literal("0"),
+            new Literal("1")
+        ])
+    ]),
+    'CHAR': new Rule('CHAR', [
+        new CharRange(0x01, 0x7F)
+    ]),
+    'CR': new Rule('CR', [
+        new CharRange(0x0D, 0x0D)
+    ])
 }

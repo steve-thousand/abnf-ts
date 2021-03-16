@@ -11,6 +11,56 @@ describe('Parser tests', function () {
             ])
         ])
     })
+    describe('CharRange', function () {
+        it('rule = %b10', function () {
+            const rules: abnf.Rule[] = parseRules('rule = %b10')
+            expect(rules).to.deep.equal([
+                new abnf.Rule('rule', [
+                    new abnf.CharRange(2, 2)
+                ])
+            ])
+        });
+        it('rule = %b10-11', function () {
+            const rules: abnf.Rule[] = parseRules('rule = %b10-11')
+            expect(rules).to.deep.equal([
+                new abnf.Rule('rule', [
+                    new abnf.CharRange(2, 3)
+                ])
+            ])
+        });
+        it('rule = %d10', function () {
+            const rules: abnf.Rule[] = parseRules('rule = %d10')
+            expect(rules).to.deep.equal([
+                new abnf.Rule('rule', [
+                    new abnf.CharRange(10, 10)
+                ])
+            ])
+        });
+        it('rule = %d10-12', function () {
+            const rules: abnf.Rule[] = parseRules('rule = %d10-12')
+            expect(rules).to.deep.equal([
+                new abnf.Rule('rule', [
+                    new abnf.CharRange(10, 12)
+                ])
+            ])
+        });
+        it('rule = %x10', function () {
+            const rules: abnf.Rule[] = parseRules('rule = %x10')
+            expect(rules).to.deep.equal([
+                new abnf.Rule('rule', [
+                    new abnf.CharRange(16, 16)
+                ])
+            ])
+        });
+        it('rule = %x10-12', function () {
+            const rules: abnf.Rule[] = parseRules('rule = %x10-12')
+            expect(rules).to.deep.equal([
+                new abnf.Rule('rule', [
+                    new abnf.CharRange(16, 18)
+                ])
+            ])
+        });
+    })
     describe('Sequence rules', function () {
         it('Optional', function () {
             const rules: abnf.Rule[] = parseRules('rule = ["abc"]')
