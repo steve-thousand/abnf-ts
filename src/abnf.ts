@@ -2,21 +2,7 @@ import { TokenStream, TokenStreamLease, TokenStreamPredicate, LiteralPredicate }
 import { SyntaxNode, RuleSyntaxNode, TokenSyntaxNode, SimpleSyntaxNode } from './ast'
 
 export abstract class RuleElement {
-    /**
-     * Attempts to consume a portion of a TokenStream that matches this element.
-     * @param stream {@link TokenStream} to attemp to consume
-     * @return a {@link SyntaxNode} that claims a lease on a matching portion of the stream. null, if no match found
-     */
-    consume(stream: TokenStream): SyntaxNode {
-        const lease: TokenStreamLease = stream.consume(this.getPredicate())
-        if (lease !== null) {
-            return new TokenSyntaxNode(lease)
-        } else {
-            return null
-        }
-    }
-
-    abstract getPredicate(): TokenStreamPredicate
+    abstract consume(stream: TokenStream): SyntaxNode
 }
 
 /**
@@ -31,17 +17,8 @@ export class RuleRef extends RuleElement {
         this.rule = rule
     }
 
-    /**
-     * Overrides superclass {@link RuleElement#consume} method to call {@link Rule#consume} on the contained 
-     * {@link Rule} instance.
-     * @override
-     */
     consume(stream: TokenStream): SyntaxNode {
         return this.rule.consume(stream)
-    }
-
-    getPredicate(): TokenStreamPredicate {
-        throw new Error('Method not implemented.');
     }
 }
 
@@ -58,11 +35,6 @@ abstract class Sequence extends RuleElement {
         this.elements = elements;
     }
 
-    /**
-     * Overrides superclass {@link RuleElement#consume} method to attempt matching on all elements contained in this 
-     * sequence
-     * @override
-     */
     consume(stream: TokenStream): SyntaxNode {
         const wrapperNode = new SimpleSyntaxNode()
         for (let element of this.elements) {
@@ -75,14 +47,24 @@ abstract class Sequence extends RuleElement {
         }
         return wrapperNode
     }
-
-    getPredicate(): TokenStreamPredicate {
-        throw new Error('Method not implemented.');
-    }
 }
 
 export class Group extends Sequence { }
-export class Optional extends Sequence { }
+
+export class Optional extends Sequence {
+
+    private repetition: Repetition
+
+    constructor(elements: RuleElement[]) {
+        super(elements)
+        //an Optional element is equal to an element wrapped in a Repetition of at most 1
+        this.repetition = new Repetition(0, 1, new Group(elements))
+    }
+
+    consume(stream: TokenStream): SyntaxNode {
+        return this.repetition.consume(stream)
+    }
+}
 
 /**
  * Separates a series of rule element sets, and at least one must match the token stream.
@@ -96,11 +78,6 @@ export class Alternative extends RuleElement {
         this.alternatives = alternatives
     }
 
-    /**
-     * Overrides superclass {@link RuleElement#consume} method to attempt matching on one of the contained alternative 
-     * sequences
-     * @override
-     */
     consume(stream: TokenStream): SyntaxNode {
         for (let alternative of this.alternatives) {
             const node = alternative.consume(stream);
@@ -110,10 +87,6 @@ export class Alternative extends RuleElement {
         }
         //failed to find a match
         return null
-    }
-
-    getPredicate(): TokenStreamPredicate {
-        throw new Error('Method not implemented.');
     }
 }
 
@@ -129,8 +102,13 @@ export class Literal extends RuleElement {
         this.predicate = new LiteralPredicate(value)
     }
 
-    getPredicate(): TokenStreamPredicate {
-        return this.predicate
+    consume(stream: TokenStream): SyntaxNode {
+        const lease: TokenStreamLease = stream.consume(this.predicate)
+        if (lease !== null) {
+            return new TokenSyntaxNode(lease)
+        } else {
+            return null
+        }
     }
 }
 
@@ -164,7 +142,7 @@ export class Repetition extends RuleElement {
             if (matched > this.atMost) {
                 break
             }
-            const childNode = super.consume(stream)
+            const childNode = this.element.consume(stream)
             if (childNode == null) {
                 break
             } else {
@@ -180,10 +158,6 @@ export class Repetition extends RuleElement {
         } else {
             return wrapperNode
         }
-    }
-
-    getPredicate(): TokenStreamPredicate {
-        return this.element.getPredicate()
     }
 }
 
