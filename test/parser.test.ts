@@ -220,25 +220,3 @@ describe('Parser tests', function () {
         ])
     })
 })
-
-// describe('Multiple rules', function () {
-//     it('2 Rules', function () {
-//         const rules: abnf.Rule[] = parseRules('rule = foo bar\nfoo="abc"\nbar="def"')
-//         expect(rules).to.deep.equal([
-//             new abnf.Rule('rule', [
-//                 new abnf.RuleRef(
-//                     new abnf.Rule("foo", [])
-//                 ),
-//                 new abnf.RuleRef(
-//                     new abnf.Rule("bar", [])
-//                 )
-//             ]),
-//             new abnf.Rule('foo', [
-//                 new abnf.Literal('abc')
-//             ]),
-//             new abnf.Rule('bar', [
-//                 new abnf.Literal('def')
-//             ])
-//         ])
-//     })
-// });
