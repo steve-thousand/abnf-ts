@@ -100,7 +100,7 @@ describe('Postal Address tests', function () {
             const node: RuleSyntaxNode = parser.parse(new StringStream("555555"), 'zip-code')
             expect(node).to.be.null
         })
-        it('"55555-" FUCK should not match "zip-code"', function () {
+        it('"55555-" should not match "zip-code"', function () {
             const node: RuleSyntaxNode = parser.parse(new StringStream("55555-"), 'zip-code')
             expect(node).to.be.null
         })
