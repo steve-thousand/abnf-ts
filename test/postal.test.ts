@@ -3,7 +3,7 @@ import { parseRules } from '../src/parser'
 import { StringStream } from '../src/reader'
 import { RuleSyntaxNode } from '../src/ast'
 
-function getPostalAddressRule() {
+function getPostalAddressRules() {
     //https://en.wikipedia.org/wiki/Augmented_Backus%E2%80%93Naur_form#Example
     const postalAddressGrammar = `postal-address   = name-part street zip-part
 
@@ -26,15 +26,14 @@ town-name        = 1*(ALPHA / SP)
 state            = 2ALPHA
 zip-code         = 5DIGIT ["-" 4DIGIT]`
 
-    const rules = parseRules(postalAddressGrammar)
-    return rules[0]
+    return parseRules(postalAddressGrammar)
 }
 
-//UNCOMMENT when we can support
-// describe('Postal Address tests', function () {
-//     it('Should match: "John Doe 123 Fake Street Springfield, IL 55555"', function () {
-//         const node: RuleSyntaxNode = getPostalAddressRule().consume(new StringStream("John Doe 123 Fake Street Springfield, IL 55555"))
-//         expect(node).to.not.be.null
-//         expect(node.ruleName).to.equal('postal-address')
-//     })
-// });
+describe('Postal Address tests', function () {
+    it('Should match: "John Doe 123 Fake Street Springfield, IL 55555"', function () {
+        const rules = getPostalAddressRules()
+        const node: RuleSyntaxNode = rules.get('postal-address').consume(new StringStream("John Doe 123 Fake Street Springfield, IL 55555"), rules)
+        expect(node).to.not.be.null
+        expect(node.ruleName).to.equal('postal-address')
+    })
+});

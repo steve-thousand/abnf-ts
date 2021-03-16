@@ -1,24 +1,19 @@
 import * as abnf from "./abnf"
 import { CharRange } from "./abnf";
 
-export function parseRules(grammar: string): abnf.Rule[] {
+export function parseRules(grammar: string): Map<string, abnf.Rule> {
     const rulesMap: Map<string, abnf.Rule> = new Map()
-    const rules = []
     const ruleStrings = grammar.split("\n");
-    //we need to parse rules in reverse order
-    //TODO: THIS IS WRONG
-    for (var i = ruleStrings.length - 1; i >= 0; i--) {
-        const rule = parseRule(ruleStrings[i], rulesMap);
+    for (let ruleStr of ruleStrings) {
+        const rule = parseRule(ruleStr);
         if (rule !== null) {
             rulesMap.set(rule.name, rule)
-            rules.push(rule)
         }
     }
-    rules.reverse()
-    return rules
+    return rulesMap
 }
 
-function parseRule(ruleDef: string, rules: Map<string, abnf.Rule>): abnf.Rule {
+function parseRule(ruleDef: string): abnf.Rule {
     if (ruleDef.indexOf("=") === -1) {
         //no def on this line
         return null
@@ -26,7 +21,7 @@ function parseRule(ruleDef: string, rules: Map<string, abnf.Rule>): abnf.Rule {
     const ruleParts = ruleDef.split("=")
     const ruleName = ruleParts[0].trim()
     try {
-        const elements = parseElements(ruleParts[1].trim(), rules)
+        const elements = parseElements(ruleParts[1].trim())
         return new abnf.Rule(ruleName, elements)
     } catch (error) {
         throw `Failed to parse rule ${ruleName} due to: ${error}`
@@ -55,7 +50,7 @@ function consumeDecimalValue(crawlState: CrawlState, elementsString: string, bas
     return parseInt(digitStr.join(""), base)
 }
 
-function parseElements(elementsString: string, rules: Map<string, abnf.Rule>, crawlState: CrawlState = { index: 0 }, terminateOn = undefined): abnf.RuleElement[] {
+function parseElements(elementsString: string, crawlState: CrawlState = { index: 0 }, terminateOn = undefined): abnf.RuleElement[] {
     const elements = []
     const alternative_indices: number[] = []
     let repetitionState: RepetitionState = null
@@ -128,13 +123,13 @@ function parseElements(elementsString: string, rules: Map<string, abnf.Rule>, cr
             case "[":
                 //option
                 crawlState.index++
-                innerElements = parseElements(elementsString, rules, crawlState, "]")
+                innerElements = parseElements(elementsString, crawlState, "]")
                 element = new abnf.Optional(innerElements)
                 break
             case "(":
                 //group
                 crawlState.index++
-                innerElements = parseElements(elementsString, rules, crawlState, ")")
+                innerElements = parseElements(elementsString, crawlState, ")")
                 element = new abnf.Group(innerElements)
                 break
             case "/":
@@ -181,10 +176,7 @@ function parseElements(elementsString: string, rules: Map<string, abnf.Rule>, cr
                     }
                     crawlState.index--
                     const ruleName = ruleNameStr.join("")
-                    if (!rules.has(ruleName)) {
-                        throw "Failed to find rule " + ruleName
-                    }
-                    element = new abnf.RuleRef(rules.get(ruleName))
+                    element = new abnf.RuleRef(ruleName)
                 }
         }
 
@@ -293,5 +285,4 @@ WSP            =  SP / HTAB
                     ; white space
 `
 
-//TODO: support this
-// export const CORE_RULES = parseRules(CORE_RULES_GRAMMAR)
+export const CORE_RULES = parseRules(CORE_RULES_GRAMMAR)

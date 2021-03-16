@@ -1,12 +1,14 @@
 import { TokenStream, TokenStreamLease, TokenStreamPredicate, LiteralPredicate, RangePredicate } from './reader';
 import { SyntaxNode, RuleSyntaxNode, TokenSyntaxNode, SimpleSyntaxNode } from './ast'
 
+export type RuleMap = Map<string, Rule>
+
 export abstract class RuleElement {
     /**
      * Every {@link RuleElement} must define how it should consume a {@link TokenStream}
      * @param stream the {@link TokenStream} to consume
      */
-    abstract consume(stream: TokenStream): SyntaxNode
+    abstract consume(stream: TokenStream, rules: RuleMap): SyntaxNode
 }
 
 /**
@@ -14,15 +16,18 @@ export abstract class RuleElement {
  */
 export class RuleRef extends RuleElement {
 
-    rule: Rule
+    ruleName: string
 
-    constructor(rule: Rule) {
+    constructor(ruleName: string) {
         super()
-        this.rule = rule
+        this.ruleName = ruleName
     }
 
-    consume(stream: TokenStream): SyntaxNode {
-        return this.rule.consume(stream)
+    consume(stream: TokenStream, rules: RuleMap): SyntaxNode {
+        if (!rules.has(this.ruleName)) {
+            throw `Failed to find rule by name '${this.ruleName}'`
+        }
+        return rules.get(this.ruleName).consume(stream, rules)
     }
 }
 
@@ -39,10 +44,10 @@ abstract class Sequence extends RuleElement {
         this.elements = elements;
     }
 
-    consume(stream: TokenStream): SyntaxNode {
+    consume(stream: TokenStream, rules: RuleMap): SyntaxNode {
         const wrapperNode = new SimpleSyntaxNode()
         for (let element of this.elements) {
-            const node = element.consume(stream)
+            const node = element.consume(stream, rules)
             if (node == null) {
                 //failed to match on this element in the sequence
                 wrapperNode.release()
@@ -69,8 +74,8 @@ export class Optional extends Sequence {
         this.repetition = new Repetition(0, 1, new Group(elements))
     }
 
-    consume(stream: TokenStream): SyntaxNode {
-        return this.repetition.consume(stream)
+    consume(stream: TokenStream, rules: RuleMap): SyntaxNode {
+        return this.repetition.consume(stream, rules)
     }
 }
 
@@ -86,9 +91,9 @@ export class Alternative extends RuleElement {
         this.alternatives = alternatives
     }
 
-    consume(stream: TokenStream): SyntaxNode {
+    consume(stream: TokenStream, rules: RuleMap): SyntaxNode {
         for (let alternative of this.alternatives) {
-            const node = alternative.consume(stream);
+            const node = alternative.consume(stream, rules);
             if (node !== null) {
                 return node
             }
@@ -110,7 +115,7 @@ abstract class PredicateElement extends RuleElement {
         this.predicate = predicate
     }
 
-    consume(stream: TokenStream): SyntaxNode {
+    consume(stream: TokenStream, rules: RuleMap): SyntaxNode {
         const lease: TokenStreamLease = stream.consume(this.predicate)
         if (lease !== null) {
             return new TokenSyntaxNode(lease)
@@ -160,7 +165,7 @@ export class Repetition extends RuleElement {
      * repetition minimum and maximum requirements.
      * @override
      */
-    consume(stream: TokenStream): SyntaxNode {
+    consume(stream: TokenStream, rules: RuleMap): SyntaxNode {
         let matched = 0
         const wrapperNode = new SimpleSyntaxNode()
         while (true) {
@@ -168,7 +173,7 @@ export class Repetition extends RuleElement {
             if (matched > this.atMost) {
                 break
             }
-            const childNode = this.element.consume(stream)
+            const childNode = this.element.consume(stream, rules)
             if (childNode == null) {
                 break
             } else {
@@ -206,10 +211,10 @@ export class Rule {
      * @param stream {@link TokenStream} to attemp to consume
      * @return an AST node that claims a lease on a matching portion of the stream. null, if no match found
      */
-    consume(stream: TokenStream): RuleSyntaxNode {
+    consume(stream: TokenStream, rules: RuleMap): RuleSyntaxNode {
         const node = new RuleSyntaxNode(this.name)
         for (let element of this.elements) {
-            let childNode = element.consume(stream)
+            let childNode = element.consume(stream, rules)
             if (childNode == null) {
                 node.release()
                 return null
