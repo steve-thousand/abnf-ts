@@ -6,20 +6,31 @@ export function parseRules(grammar: string): abnf.Rule[] {
     const rules = []
     const ruleStrings = grammar.split("\n");
     //we need to parse rules in reverse order
+    //TODO: THIS IS WRONG
     for (var i = ruleStrings.length - 1; i >= 0; i--) {
         const rule = parseRule(ruleStrings[i], rulesMap);
-        rulesMap.set(rule.name, rule)
-        rules.push(rule)
+        if (rule !== null) {
+            rulesMap.set(rule.name, rule)
+            rules.push(rule)
+        }
     }
     rules.reverse()
     return rules
 }
 
 function parseRule(ruleDef: string, rules: Map<string, abnf.Rule>): abnf.Rule {
+    if (ruleDef.indexOf("=") === -1) {
+        //no def on this line
+        return null
+    }
     const ruleParts = ruleDef.split("=")
     const ruleName = ruleParts[0].trim()
-    const elements = parseElements(ruleParts[1].trim(), rules)
-    return new abnf.Rule(ruleName, elements)
+    try {
+        const elements = parseElements(ruleParts[1].trim(), rules)
+        return new abnf.Rule(ruleName, elements)
+    } catch (error) {
+        throw `Failed to parse rule ${ruleName} due to: ${error}`
+    }
 }
 
 type CrawlState = {
@@ -56,6 +67,9 @@ function parseElements(elementsString: string, rules: Map<string, abnf.Rule>, cr
         let element: abnf.RuleElement
         let innerElements: abnf.RuleElement[]
         switch (char) {
+            case ";":
+                //comment, this line is done
+                return elements
             case "\"":
                 //string
                 //TODO: smarter?
@@ -222,3 +236,62 @@ function isAlpha(char: string) {
 function isDigit(char: string): boolean {
     return (/^[0-9]$/).test(char)
 }
+
+//https://tools.ietf.org/html/rfc5234#appendix-B.1
+const CORE_RULES_GRAMMAR = `
+ALPHA          =  %x41-5A / %x61-7A   ; A-Z / a-z
+
+BIT            =  "0" / "1"
+
+CHAR           =  %x01-7F
+                    ; any 7-bit US-ASCII character,
+                    ;  excluding NUL
+
+CR             =  %x0D
+                    ; carriage return
+
+CRLF           =  CR LF
+                    ; Internet standard newline
+
+CTL            =  %x00-1F / %x7F
+                    ; controls
+
+DIGIT          =  %x30-39
+                    ; 0-9
+
+DQUOTE         =  %x22
+                    ; " (Double Quote)
+
+HEXDIG         =  DIGIT / "A" / "B" / "C" / "D" / "E" / "F"
+
+HTAB           =  %x09
+                    ; horizontal tab
+
+LF             =  %x0A
+                    ; linefeed
+
+LWSP           =  *(WSP / CRLF WSP)
+                    ; Use of this linear-white-space rule
+                    ;  permits lines containing only white
+                    ;  space that are no longer legal in
+                    ;  mail headers and have caused
+                    ;  interoperability problems in other
+                    ;  contexts.
+                    ; Do not use when defining mail
+                    ;  headers and use with caution in
+                    ;  other contexts.
+
+OCTET          =  %x00-FF
+                    ; 8 bits of data
+
+SP             =  %x20
+
+VCHAR          =  %x21-7E
+                    ; visible (printing) characters
+
+WSP            =  SP / HTAB
+                    ; white space
+`
+
+//TODO: support this
+// export const CORE_RULES = parseRules(CORE_RULES_GRAMMAR)

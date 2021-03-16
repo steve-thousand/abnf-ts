@@ -219,4 +219,57 @@ describe('Parser tests', function () {
             ])
         ])
     })
+    describe('Comments ignored', function () {
+        it('rule = "abc" ; this is a comment', function () {
+            const rules: abnf.Rule[] = parseRules('rule = "abc" ; this is a comment')
+            expect(rules).to.deep.equal([
+                new abnf.Rule('rule', [
+                    new abnf.Literal('abc')
+                ])
+            ])
+        })
+        it('rule = "abc" ; this is a comment, foo = "def"', function () {
+            const rules: abnf.Rule[] = parseRules('rule = "abc" ; this is a comment\nfoo = "def"')
+            expect(rules).to.deep.equal([
+                new abnf.Rule('rule', [
+                    new abnf.Literal('abc')
+                ]),
+                new abnf.Rule('foo', [
+                    new abnf.Literal('def')
+                ])
+            ])
+        })
+        it('line that is only a comment', function () {
+            const rules: abnf.Rule[] = parseRules('rule = "abc" ; this is a comment\n ; this is also a comment\nfoo = "def"')
+            expect(rules).to.deep.equal([
+                new abnf.Rule('rule', [
+                    new abnf.Literal('abc')
+                ]),
+                new abnf.Rule('foo', [
+                    new abnf.Literal('def')
+                ])
+            ])
+        })
+    })
+    describe('White space cases', function () {
+        it('rule="abc"', function () {
+            const rules: abnf.Rule[] = parseRules('rule="abc"')
+            expect(rules).to.deep.equal([
+                new abnf.Rule('rule', [
+                    new abnf.Literal('abc')
+                ])
+            ])
+        })
+        it('double spaced', function () {
+            const rules: abnf.Rule[] = parseRules('rule="abc"\n\nfoo = "def"')
+            expect(rules).to.deep.equal([
+                new abnf.Rule('rule', [
+                    new abnf.Literal('abc')
+                ]),
+                new abnf.Rule('foo', [
+                    new abnf.Literal('def')
+                ])
+            ])
+        })
+    });
 })
