@@ -221,10 +221,6 @@ describe('AST tests', function () {
                 expect(node).to.not.be.null
                 expect(node.ruleName).to.equal('foo')
             });
-            it('"abcabcabcabcabc" should not match foo', function () {
-                const node: RuleSyntaxNode = foo.consume(new StringStream("abcabcabcabcabc"), rules)
-                expect(node).to.be.null
-            });
         });
         describe('foo = 0*1"abc"', function () {
             const rules = parseRules('foo = 0*1"abc"')
@@ -240,10 +236,6 @@ describe('AST tests', function () {
                 expect(node).to.not.be.null
                 expect(node.ruleName).to.equal('foo')
             });
-            it('"abcabc" should not match foo', function () {
-                const node: RuleSyntaxNode = foo.consume(new StringStream("abcabc"), rules)
-                expect(node).to.be.null
-            });
         });
         describe('foo = *1"abc"', function () {
             const rules = parseRules('foo = *1"abc"')
@@ -258,10 +250,6 @@ describe('AST tests', function () {
                 const node: RuleSyntaxNode = foo.consume(new StringStream("abc"), rules)
                 expect(node).to.not.be.null
                 expect(node.ruleName).to.equal('foo')
-            });
-            it('"abcabc" should not match foo', function () {
-                const node: RuleSyntaxNode = foo.consume(new StringStream("abcabc"), rules)
-                expect(node).to.be.null
             });
         });
         describe('foo = *"abc"', function () {

@@ -1,5 +1,33 @@
 import * as abnf from "./abnf"
-import { CharRange } from "./abnf";
+import { TokenStream } from "./reader";
+import { RuleSyntaxNode } from './ast';
+import { RuleMap } from "./abnf";
+
+export interface Parser {
+    parse(stream: TokenStream, ruleName: string): RuleSyntaxNode
+}
+
+export function generateParser(grammar: string): Parser {
+    const rules: abnf.RuleMap = parseRules(grammar)
+    const includingCoreRules: RuleMap = new Map
+    rules.forEach((value: abnf.Rule, key: string) => {
+        includingCoreRules.set(key, value)
+    });
+    CORE_RULES.forEach((value: abnf.Rule, key: string) => {
+        includingCoreRules.set(key, value)
+    });
+    return {
+        parse: function (stream: TokenStream, ruleName: string): RuleSyntaxNode {
+            const rule: abnf.Rule = includingCoreRules.get(ruleName)
+            const node = rule.consume(stream, includingCoreRules)
+            if (stream.isEmpty()) {
+                return node
+            } else {
+                return null;
+            }
+        }
+    }
+}
 
 export function parseRules(grammar: string): Map<string, abnf.Rule> {
     const rulesMap: Map<string, abnf.Rule> = new Map()
@@ -29,7 +57,7 @@ function parseRule(ruleDef: string): abnf.Rule {
 }
 
 type CrawlState = {
-    index: 0
+    index: number
 }
 
 type RepetitionState = {
@@ -37,10 +65,21 @@ type RepetitionState = {
     atMost: number
 }
 
-function consumeDecimalValue(crawlState: CrawlState, elementsString: string, base: number) {
+function consumeNumberValue(crawlState: CrawlState, elementsString: string, base: number) {
     const digitStr = []
+    let digitFunction
+    switch (base) {
+        case 2:
+            digitFunction = isBinaryDigit
+        case 10:
+            digitFunction = isDigit
+            break
+        case 16:
+            digitFunction = isHexDigit
+            break
+    }
     while (true) {
-        if (isDigit(elementsString[crawlState.index])) {
+        if (digitFunction(elementsString[crawlState.index])) {
             digitStr.push(elementsString[crawlState.index])
             crawlState.index++
         } else {
@@ -64,7 +103,8 @@ function parseElements(elementsString: string, crawlState: CrawlState = { index:
         switch (char) {
             case ";":
                 //comment, this line is done
-                return elements
+                crawlState.index = elementsString.length
+                break
             case "\"":
                 //string
                 //TODO: smarter?
@@ -152,13 +192,13 @@ function parseElements(elementsString: string, crawlState: CrawlState = { index:
                         break
                 }
                 crawlState.index++
-                const value: number = consumeDecimalValue(crawlState, elementsString, base);
+                const value: number = consumeNumberValue(crawlState, elementsString, base);
                 if (elementsString[crawlState.index] === "-") {
                     crawlState.index++
-                    const nextValue = consumeDecimalValue(crawlState, elementsString, base)
-                    element = new CharRange(value, nextValue)
+                    const nextValue = consumeNumberValue(crawlState, elementsString, base)
+                    element = new abnf.CharRange(value, nextValue)
                 } else {
-                    element = new CharRange(value, value)
+                    element = new abnf.CharRange(value, value)
                 }
 
                 break
@@ -225,8 +265,16 @@ function isAlpha(char: string) {
     return (/^[a-zA-Z]$/).test(char)
 }
 
+function isBinaryDigit(char: string): boolean {
+    return (/^[0-1]$/).test(char)
+}
+
 function isDigit(char: string): boolean {
     return (/^[0-9]$/).test(char)
+}
+
+function isHexDigit(char: string): boolean {
+    return (/^[0-9A-Fa-f]$/).test(char)
 }
 
 //https://tools.ietf.org/html/rfc5234#appendix-B.1

@@ -49,21 +49,21 @@ describe('Parser tests', function () {
                 ])
             )
         });
-        it('rule = %x10', function () {
-            const rules: abnf.RuleMap = parseRules('rule = %x10')
+        it('rule = %x1A', function () {
+            const rules: abnf.RuleMap = parseRules('rule = %x1A')
             expect(rules.size).to.equal(1)
             expect(rules.get('rule')).to.deep.equal(
                 new abnf.Rule('rule', [
-                    new abnf.CharRange(16, 16)
+                    new abnf.CharRange(26, 26)
                 ])
             )
         });
-        it('rule = %x10-12', function () {
-            const rules: abnf.RuleMap = parseRules('rule = %x10-12')
+        it('rule = %x1A-b0', function () {
+            const rules: abnf.RuleMap = parseRules('rule = %x1A-b0')
             expect(rules.size).to.equal(1)
             expect(rules.get('rule')).to.deep.equal(
                 new abnf.Rule('rule', [
-                    new abnf.CharRange(16, 18)
+                    new abnf.CharRange(26, 176)
                 ])
             )
         });
@@ -276,6 +276,19 @@ describe('Parser tests', function () {
             expect(rules.get('foo')).to.deep.equal(
                 new abnf.Rule('foo', [
                     new abnf.Literal('def')
+                ])
+            )
+        })
+        it('comment does not interfere with alternative parsing', function () {
+            //a bug existed where comments would short circuit alternative splitting
+            const rules: abnf.RuleMap = parseRules('rule = "abc" / "def" ; this is a comment')
+            expect(rules.size).to.equal(1)
+            expect(rules.get('rule')).to.deep.equal(
+                new abnf.Rule('rule', [
+                    new abnf.Alternative([
+                        new abnf.Literal('abc'),
+                        new abnf.Literal('def')
+                    ])
                 ])
             )
         })

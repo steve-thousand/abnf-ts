@@ -52,6 +52,8 @@ abstract class Sequence extends RuleElement {
                 //failed to match on this element in the sequence
                 wrapperNode.release()
                 return null
+            } else {
+                wrapperNode.addChild(node)
             }
         }
         return wrapperNode
@@ -170,7 +172,7 @@ export class Repetition extends RuleElement {
         const wrapperNode = new SimpleSyntaxNode()
         while (true) {
             //exit early if we have reached the maximum amount
-            if (matched > this.atMost) {
+            if (matched >= this.atMost) {
                 break
             }
             const childNode = this.element.consume(stream, rules)
@@ -224,26 +226,4 @@ export class Rule {
         }
         return node
     }
-}
-
-//https://tools.ietf.org/html/rfc5234#appendix-B.1
-const coreRules = {
-    'ALPHA': new Rule('ALPHA', [
-        new Alternative([
-            new CharRange(0x41, 0x5A),
-            new CharRange(0x61, 0x7A)
-        ])
-    ]),
-    'BIT': new Rule('BIT', [
-        new Alternative([
-            new Literal("0"),
-            new Literal("1")
-        ])
-    ]),
-    'CHAR': new Rule('CHAR', [
-        new CharRange(0x01, 0x7F)
-    ]),
-    'CR': new Rule('CR', [
-        new CharRange(0x0D, 0x0D)
-    ])
 }

@@ -70,6 +70,9 @@ export class RangePredicate implements TokenStreamPredicate {
     }
     apply(stream: TokenStream): TokenStreamLease {
         const char = stream.read()
+        if (char == null) {
+            return null
+        }
         const decimal = char.charCodeAt(0);
         if (decimal >= this.minimum && decimal <= this.maximum) {
             return new StringStreamLease(char, stream)
@@ -88,6 +91,7 @@ export interface TokenStream {
     consume(predicate: TokenStreamPredicate): TokenStreamLease
     read(): string
     push(char: string)
+    isEmpty(): boolean
 }
 
 export class StringStream implements TokenStream {
@@ -114,4 +118,9 @@ export class StringStream implements TokenStream {
     push(char: string) {
         this.index--;
     }
+
+    isEmpty(): boolean {
+        return this.index == this.string.length
+    }
+
 }
