@@ -31,6 +31,27 @@ zip-code         = 5DIGIT ["-" 4DIGIT]`
 
 describe('Postal Address tests', function () {
     const parser = getPostalAddressParser()
+    describe('name-part tests', function () {
+        it('"John Doe\\r\\n" should match "name-part"', function () {
+            const node: RuleSyntaxNode = parser.parse(new StringStream("John Doe\r\n"), 'name-part')
+            expect(node).to.not.be.null
+            expect(node.ruleName).to.equal('name-part')
+        })
+    });
+    describe('personal-part tests', function () {
+        it('"John" should match "personal-part"', function () {
+            const node: RuleSyntaxNode = parser.parse(new StringStream("John"), 'personal-part')
+            expect(node).to.not.be.null
+            expect(node.ruleName).to.equal('personal-part')
+        })
+    });
+    describe('street tests', function () {
+        it('"12345 Fake\\r\\n" should match "street"', function () {
+            const node: RuleSyntaxNode = parser.parse(new StringStream("12345 Fake\r\n"), 'street')
+            expect(node).to.not.be.null
+            expect(node.ruleName).to.equal('street')
+        });
+    });
     describe('street-name tests', function () {
         it('"Fake" should match "street-name"', function () {
             const node: RuleSyntaxNode = parser.parse(new StringStream("Fake"), 'street-name')
@@ -109,9 +130,9 @@ describe('Postal Address tests', function () {
             expect(node).to.be.null
         })
     })
-    // it('Should match: "John Doe\\r\\n123 Fake\\r\\nSpringfield, IL 55555\\r\\n"', function () {
-    //     const node: RuleSyntaxNode = parser.parse(new StringStream("John Doe\r\n123 Fake\r\nSpringfield, IL 55555\r\n"), 'postal-address')
-    //     expect(node).to.not.be.null
-    //     expect(node.ruleName).to.equal('postal-address')
-    // })
+    it('Should match: "John Doe\\r\\n12345 Fake\\r\\nSpringfield, IL 55555\\r\\n"', function () {
+        const node: RuleSyntaxNode = parser.parse(new StringStream("John Doe\r\n12345 Fake\r\nSpringfield, IL 55555\r\n"), 'postal-address')
+        expect(node).to.not.be.null
+        expect(node.ruleName).to.equal('postal-address')
+    })
 });
