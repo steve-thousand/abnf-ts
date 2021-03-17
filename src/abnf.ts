@@ -103,6 +103,10 @@ export class Alternative extends RuleElement {
         //failed to find a match
         return null
     }
+
+    pushAlternative(ruleElement: RuleElement) {
+        this.alternatives.push(ruleElement)
+    }
 }
 
 /**
@@ -201,11 +205,11 @@ export class Repetition extends RuleElement {
 export class Rule {
 
     name: string
-    elements: RuleElement[]
+    definition: RuleElement
 
-    constructor(name: string, elements: RuleElement[]) {
+    constructor(name: string, definition: RuleElement) {
         this.name = name
-        this.elements = elements
+        this.definition = definition
     }
 
     /**
@@ -214,16 +218,21 @@ export class Rule {
      * @return an AST node that claims a lease on a matching portion of the stream. null, if no match found
      */
     consume(stream: TokenStream, rules: RuleMap): RuleSyntaxNode {
-        const node = new RuleSyntaxNode(this.name)
-        for (let element of this.elements) {
-            let childNode = element.consume(stream, rules)
-            if (childNode == null) {
-                node.release()
-                return null
-            } else {
-                node.addChild(childNode)
-            }
+        let childNode = this.definition.consume(stream, rules)
+        if (childNode == null) {
+            return null
+        } else {
+            const node = new RuleSyntaxNode(this.name)
+            node.addChild(childNode)
+            return node
         }
-        return node
+    }
+
+    addAlternativeDefinition(alternativeRule: Rule) {
+        if (this.definition instanceof Alternative) {
+            (<Alternative>this.definition).pushAlternative(alternativeRule.definition)
+        } else {
+            this.definition = new Alternative([this.definition, alternativeRule.definition])
+        }
     }
 }

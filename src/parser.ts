@@ -30,27 +30,37 @@ export function generateParser(grammar: string): Parser {
 }
 
 export function parseRules(grammar: string): Map<string, abnf.Rule> {
-    const rulesMap: Map<string, abnf.Rule> = new Map()
+    const rulesMap: abnf.RuleMap = new Map()
     const ruleStrings = grammar.split("\n");
     for (let ruleStr of ruleStrings) {
-        const rule = parseRule(ruleStr);
-        if (rule !== null) {
-            rulesMap.set(rule.name, rule)
-        }
+        parseRule(ruleStr, rulesMap);
     }
     return rulesMap
 }
 
-function parseRule(ruleDef: string): abnf.Rule {
+function parseRule(ruleDef: string, rules: abnf.RuleMap) {
     if (ruleDef.indexOf("=") === -1) {
         //no def on this line
         return null
     }
-    const ruleParts = ruleDef.split("=")
+
+    const isAlternativDefintion = ruleDef.indexOf("=/") !== -1
+    const ruleParts = ruleDef.split(/=\/?/)
     const ruleName = ruleParts[0].trim()
     try {
         const elements = parseElements(ruleParts[1].trim())
-        return new abnf.Rule(ruleName, elements)
+        const rule = new abnf.Rule(ruleName, elements.length == 1 ? elements[0] : new abnf.Group(elements))
+        if (rule !== null) {
+            if (isAlternativDefintion) {
+                if (rules.has(ruleName)) {
+                    rules.get(ruleName).addAlternativeDefinition(rule)
+                } else {
+                    throw 'Rule "${ruleName}" defined as an alternative definition, but no original definition exists.'
+                }
+            } else {
+                rules.set(rule.name, rule)
+            }
+        }
     } catch (error) {
         throw `Failed to parse rule ${ruleName} due to: ${error}`
     }

@@ -53,11 +53,6 @@ describe('AST tests', function () {
                 const node: RuleSyntaxNode = murmur.consume(new StringStream("foobarfoo"), rules)
                 expect(node).to.not.be.null
                 expect(node.ruleName).to.equal('murmur')
-
-                expect(node.children.length).to.equal(3)
-                expect((<RuleSyntaxNode>node.children[0]).ruleName).to.equal('foo')
-                expect((<RuleSyntaxNode>node.children[1]).ruleName).to.equal('bar')
-                expect((<RuleSyntaxNode>node.children[2]).ruleName).to.equal('foo')
             });
         })
     })
