@@ -1,5 +1,22 @@
 import { TokenStreamLease } from './reader';
 
+export class NodeArray extends Array<SyntaxNode> {
+    constructor(...items: SyntaxNode[]) {
+        super(...items)
+        Object.setPrototypeOf(this, NodeArray.prototype);
+    }
+    extend(nodeArray: NodeArray): void {
+        for (let node of nodeArray) {
+            this.push(node);
+        }
+    }
+    release(): void {
+        for (var i = this.length - 1; i >= 0; i--) {
+            this[i].release();
+        }
+    }
+}
+
 export abstract class SyntaxNode {
 
     children: SyntaxNode[] = []

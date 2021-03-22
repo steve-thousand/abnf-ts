@@ -1,5 +1,5 @@
 import { TokenStream, TokenStreamLease, TokenStreamPredicate, LiteralPredicate, RangePredicate } from './reader';
-import { SyntaxNode, RuleSyntaxNode, TokenSyntaxNode, SimpleSyntaxNode } from './ast'
+import { RuleSyntaxNode, TokenSyntaxNode, NodeArray } from './ast'
 
 export type RuleMap = Map<string, Rule>
 
@@ -8,7 +8,7 @@ export abstract class RuleElement {
      * Every {@link RuleElement} must define how it should consume a {@link TokenStream}
      * @param stream the {@link TokenStream} to consume
      */
-    abstract consume(stream: TokenStream, rules: RuleMap): SyntaxNode
+    abstract consume(stream: TokenStream, rules: RuleMap): NodeArray
 }
 
 /**
@@ -23,11 +23,17 @@ export class RuleRef extends RuleElement {
         this.ruleName = ruleName
     }
 
-    consume(stream: TokenStream, rules: RuleMap): SyntaxNode {
+    consume(stream: TokenStream, rules: RuleMap): NodeArray {
         if (!rules.has(this.ruleName)) {
             throw `Failed to find rule by name '${this.ruleName}'`
         }
-        return rules.get(this.ruleName).consume(stream, rules)
+        const rule = rules.get(this.ruleName)
+        const node = rule.consume(stream, rules)
+        if (node === null) {
+            return null;
+        } else {
+            return new NodeArray(node)
+        }
     }
 }
 
@@ -44,19 +50,19 @@ abstract class Sequence extends RuleElement {
         this.elements = elements;
     }
 
-    consume(stream: TokenStream, rules: RuleMap): SyntaxNode {
-        const wrapperNode = new SimpleSyntaxNode()
+    consume(stream: TokenStream, rules: RuleMap): NodeArray {
+        const nodeArray: NodeArray = new NodeArray()
         for (let element of this.elements) {
-            const node = element.consume(stream, rules)
-            if (node == null) {
+            const childrenNodes = element.consume(stream, rules)
+            if (childrenNodes == null) {
                 //failed to match on this element in the sequence
-                wrapperNode.release()
+                nodeArray.release()
                 return null
             } else {
-                wrapperNode.addChild(node)
+                nodeArray.extend(childrenNodes)
             }
         }
-        return wrapperNode
+        return nodeArray
     }
 }
 
@@ -76,7 +82,7 @@ export class Optional extends Sequence {
         this.repetition = new Repetition(0, 1, new Group(elements))
     }
 
-    consume(stream: TokenStream, rules: RuleMap): SyntaxNode {
+    consume(stream: TokenStream, rules: RuleMap): NodeArray {
         return this.repetition.consume(stream, rules)
     }
 }
@@ -93,7 +99,7 @@ export class Alternative extends RuleElement {
         this.alternatives = alternatives
     }
 
-    consume(stream: TokenStream, rules: RuleMap): SyntaxNode {
+    consume(stream: TokenStream, rules: RuleMap): NodeArray {
         for (let alternative of this.alternatives) {
             const node = alternative.consume(stream, rules);
             if (node !== null) {
@@ -121,10 +127,10 @@ abstract class PredicateElement extends RuleElement {
         this.predicate = predicate
     }
 
-    consume(stream: TokenStream, rules: RuleMap): SyntaxNode {
+    consume(stream: TokenStream, rules: RuleMap): NodeArray {
         const lease: TokenStreamLease = stream.consume(this.predicate)
         if (lease !== null) {
-            return new TokenSyntaxNode(lease)
+            return new NodeArray(new TokenSyntaxNode(lease))
         } else {
             return null
         }
@@ -171,29 +177,29 @@ export class Repetition extends RuleElement {
      * repetition minimum and maximum requirements.
      * @override
      */
-    consume(stream: TokenStream, rules: RuleMap): SyntaxNode {
+    consume(stream: TokenStream, rules: RuleMap): NodeArray {
         let matched = 0
-        const wrapperNode = new SimpleSyntaxNode()
+        const nodeArray: NodeArray = new NodeArray()
         while (true) {
             //exit early if we have reached the maximum amount
             if (matched >= this.atMost) {
                 break
             }
-            const childNode = this.element.consume(stream, rules)
-            if (childNode == null) {
+            const childrenNodes = this.element.consume(stream, rules)
+            if (childrenNodes == null) {
                 break
             } else {
-                wrapperNode.addChild(childNode)
+                nodeArray.extend(childrenNodes)
             }
             matched++
         }
 
         //release and return null if we have not met the minimum requirement
-        if (wrapperNode.children.length < this.atleast || wrapperNode.children.length > this.atMost) {
-            wrapperNode.release()
+        if (matched < this.atleast || matched > this.atMost) {
+            nodeArray.release()
             return null
         } else {
-            return wrapperNode
+            return nodeArray
         }
     }
 }
@@ -218,12 +224,14 @@ export class Rule {
      * @return an AST node that claims a lease on a matching portion of the stream. null, if no match found
      */
     consume(stream: TokenStream, rules: RuleMap): RuleSyntaxNode {
-        let childNode = this.definition.consume(stream, rules)
-        if (childNode == null) {
+        let childrenNodes = this.definition.consume(stream, rules)
+        if (childrenNodes == null) {
             return null
         } else {
             const node = new RuleSyntaxNode(this.name)
-            node.addChild(childNode)
+            for (let childNode of childrenNodes) {
+                node.addChild(childNode)
+            }
             return node
         }
     }
