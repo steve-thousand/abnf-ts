@@ -8,12 +8,12 @@ export class NodeArray extends Array<SyntaxNode> {
     Object.setPrototypeOf(this, NodeArray.prototype);
   }
   extend(nodeArray: NodeArray): void {
-    for (let node of nodeArray) {
+    for (const node of nodeArray) {
       this.push(node);
     }
   }
   release(): void {
-    for (var i = this.length - 1; i >= 0; i--) {
+    for (let i = this.length - 1; i >= 0; i--) {
       this[i].release();
     }
   }
@@ -38,29 +38,28 @@ export abstract class SyntaxNode {
      */
     release(): void {
       //release the children nodes in reverse order
-      for (var i = this.children.length - 1; i >= 0; i--) {
+      for (let i = this.children.length - 1; i >= 0; i--) {
         this.children[i].release()
       }
       //TODO: how to clean up best. delete? set null?
     }
 
     private finalize() {
-      const node = this
-      for (let i = 0; i < node.children.length; i++) {
-        let child = node.children[i]
+      for (let i = 0; i < this.children.length; i++) {
+        const child = this.children[i]
         child.finalize()
         if (child instanceof ProtoTokenSyntaxNode) {
           const replacementNode = new TokenSyntaxNode(child.getRule(), child.getValue())
-          for (let innerChild of child.getChildren()) {
+          for (const innerChild of child.getChildren()) {
             replacementNode.withChild(innerChild)
           }
-          node.children[i] = replacementNode
+          this.children[i] = replacementNode
           replacementNode.finalize()
         }
       }
     }
 
-    static finalize(root: SyntaxNode) {
+    static finalize(root: SyntaxNode): SyntaxNode {
       const tempRoot = new RuleSyntaxNode('').withChild(root)
       tempRoot.finalize()
       return tempRoot.getChildren()[0]

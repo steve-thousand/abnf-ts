@@ -30,10 +30,10 @@ export function generateParser(grammar: string): Parser {
   }
 }
 
-export function parseRules(grammar: string, isCore: boolean = false): Map<string, abnf.Rule> {
+export function parseRules(grammar: string, isCore = false): Map<string, abnf.Rule> {
   const rulesMap: abnf.RuleMap = new Map()
   const ruleStrings = grammar.split('\n');
-  for (let ruleStr of ruleStrings) {
+  for (const ruleStr of ruleStrings) {
     parseRule(ruleStr, rulesMap, isCore);
   }
   return rulesMap
@@ -138,19 +138,19 @@ function parseElements(elementsString: string, crawlState: CrawlState = { index:
         //repetition
 
         //build atLeast number
-        let atLeastStr = []
+        const atLeastStr = []
         while (isDigit(elementsString[crawlState.index])) {
           atLeastStr.push(elementsString[crawlState.index])
           crawlState.index++
         }
-        let atLeast = atLeastStr.length > 0 ? parseInt(atLeastStr.join('')) : 0
+        const atLeast = atLeastStr.length > 0 ? parseInt(atLeastStr.join('')) : 0
 
         let atMost
         if (elementsString[crawlState.index] == '*') {
           crawlState.index++
 
           //build atLeast number
-          let atMostStr = []
+          const atMostStr = []
           while (isDigit(elementsString[crawlState.index])) {
             atMostStr.push(elementsString[crawlState.index])
             crawlState.index++
@@ -215,7 +215,7 @@ function parseElements(elementsString: string, crawlState: CrawlState = { index:
       default:
         //if no other rules apply, we are probably crawling over a rule name
         if (isAlpha(char)) {
-          let ruleNameStr = []
+          const ruleNameStr = []
           ruleNameStr.push(char)
           crawlState.index++
           while (isAlpha(elementsString[crawlState.index]) ||
@@ -250,7 +250,7 @@ function parseElements(elementsString: string, crawlState: CrawlState = { index:
   if (alternative_indices.length > 0) {
     let lastIndex = 0
     const alternativeRuleSets = []
-    for (let alternative_index of alternative_indices) {
+    for (const alternative_index of alternative_indices) {
       const slice = elements.slice(lastIndex, alternative_index)
       if (slice.length == 1) {
         alternativeRuleSets.push(slice[0])
