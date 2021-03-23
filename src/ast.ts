@@ -1,8 +1,11 @@
+import { Rule } from './abnf';
 import { TokenStreamLease } from './reader';
 
 export class NodeArray extends Array<SyntaxNode> {
     constructor(...items: SyntaxNode[]) {
         super(...items)
+        //apparently this is important?
+        //https://github.com/Microsoft/TypeScript/wiki/FAQ#why-doesnt-extending-built-ins-like-error-array-and-map-work
         Object.setPrototypeOf(this, NodeArray.prototype);
     }
     extend(nodeArray: NodeArray): void {
@@ -17,12 +20,17 @@ export class NodeArray extends Array<SyntaxNode> {
     }
 }
 
+interface RuleNameMixin {
+    getRule(): string;
+}
+
 export abstract class SyntaxNode {
 
-    children: SyntaxNode[] = []
+    private children: SyntaxNode[] = []
 
-    addChild(child: SyntaxNode): void {
+    withChild(child: SyntaxNode): SyntaxNode {
         this.children.push(child)
+        return this
     }
 
     /**
@@ -36,39 +44,82 @@ export abstract class SyntaxNode {
         }
         //TODO: how to clean up best. delete? set null?
     }
-}
 
-export class SimpleSyntaxNode extends SyntaxNode {
-    constructor() {
-        super()
+    private finalize() {
+        const node = this
+        for (let i = 0; i < node.children.length; i++) {
+            let child = node.children[i]
+            child.finalize()
+            if (child instanceof ProtoTokenSyntaxNode) {
+                const replacementNode = new TokenSyntaxNode(child.getRule(), child.getValue())
+                for (let innerChild of child.getChildren()) {
+                    replacementNode.withChild(innerChild)
+                }
+                node.children[i] = replacementNode
+                replacementNode.finalize()
+            }
+        }
+    }
+
+    static finalize(root: SyntaxNode) {
+        const tempRoot = new RuleSyntaxNode('').withChild(root)
+        tempRoot.finalize()
+        return tempRoot.getChildren()[0]
+    }
+
+    getChildren(): SyntaxNode[] {
+        return this.children
     }
 }
 
-export class TokenSyntaxNode extends SyntaxNode {
+export class RuleSyntaxNode extends SyntaxNode implements RuleNameMixin {
+    private rule: string
 
-    private tokenStreamLease: TokenStreamLease
-
-    constructor(tokenStreamLease: TokenStreamLease) {
+    constructor(rule: string) {
         super()
-        this.tokenStreamLease = tokenStreamLease
+        this.rule = rule
+    }
+
+    getRule(): string {
+        return this.rule
+    }
+}
+
+export abstract class ProtoTokenSyntaxNode extends RuleSyntaxNode {
+    private value: string
+
+    constructor(rule: string, value: string) {
+        super(rule)
+        this.value = value
     }
 
     release(): void {
         //TODO: safe?
         //need to release this token stream lease
-        if (this.tokenStreamLease !== undefined) {
-            this.tokenStreamLease.release()
+        const tokenStreamLease = this.getStreamLease()
+        if (tokenStreamLease !== undefined) {
+            tokenStreamLease.release()
         }
         super.release()
     }
+
+    abstract getStreamLease(): TokenStreamLease
+
+    getValue(): string {
+        return this.value
+    }
 }
 
-export class RuleSyntaxNode extends SyntaxNode {
+export class TokenSyntaxNode extends RuleSyntaxNode {
 
-    ruleName: String
+    private value: string
 
-    constructor(ruleName: string) {
-        super()
-        this.ruleName = ruleName
+    constructor(rule: string, value: string) {
+        super(rule)
+        this.value = value
+    }
+
+    getValue(): string {
+        return this.value
     }
 }

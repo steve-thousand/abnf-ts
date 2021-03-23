@@ -1,15 +1,14 @@
 import * as abnf from "./abnf"
 import { TokenStream } from "./reader";
-import { RuleSyntaxNode } from './ast';
-import { RuleMap } from "./abnf";
+import { SyntaxNode } from './ast';
 
 export interface Parser {
-    parse(stream: TokenStream, ruleName: string): RuleSyntaxNode
+    parse(stream: TokenStream, ruleName: string): SyntaxNode
 }
 
 export function generateParser(grammar: string): Parser {
     const rules: abnf.RuleMap = parseRules(grammar)
-    const includingCoreRules: RuleMap = new Map
+    const includingCoreRules: abnf.RuleMap = new Map
     rules.forEach((value: abnf.Rule, key: string) => {
         includingCoreRules.set(key, value)
     });
@@ -17,11 +16,13 @@ export function generateParser(grammar: string): Parser {
         includingCoreRules.set(key, value)
     });
     return {
-        parse: function (stream: TokenStream, ruleName: string): RuleSyntaxNode {
-            const rule: abnf.Rule = includingCoreRules.get(ruleName)
-            const node = rule.consume(stream, includingCoreRules)
+        parse: function (stream: TokenStream, ruleName: string): SyntaxNode {
+            //ugh.
+            const rootRule: abnf.Rule = new abnf.Rule('root', new abnf.RuleRef(ruleName))
+            const node = rootRule.consume(stream, includingCoreRules)
             if (stream.isEmpty()) {
-                return node
+                SyntaxNode.finalize(node)
+                return node.getChildren()[0]
             } else {
                 return null;
             }
@@ -29,16 +30,16 @@ export function generateParser(grammar: string): Parser {
     }
 }
 
-export function parseRules(grammar: string): Map<string, abnf.Rule> {
+export function parseRules(grammar: string, isCore: boolean = false): Map<string, abnf.Rule> {
     const rulesMap: abnf.RuleMap = new Map()
     const ruleStrings = grammar.split("\n");
     for (let ruleStr of ruleStrings) {
-        parseRule(ruleStr, rulesMap);
+        parseRule(ruleStr, rulesMap, isCore);
     }
     return rulesMap
 }
 
-function parseRule(ruleDef: string, rules: abnf.RuleMap) {
+function parseRule(ruleDef: string, rules: abnf.RuleMap, isCore: boolean) {
     if (ruleDef.indexOf("=") === -1) {
         //no def on this line
         return null
@@ -49,7 +50,7 @@ function parseRule(ruleDef: string, rules: abnf.RuleMap) {
     const ruleName = ruleParts[0].trim()
     try {
         const elements = parseElements(ruleParts[1].trim())
-        const rule = new abnf.Rule(ruleName, elements.length == 1 ? elements[0] : new abnf.Group(elements))
+        const rule = new abnf.Rule(ruleName, elements.length == 1 ? elements[0] : new abnf.Group(elements), isCore)
         if (rule !== null) {
             if (isAlternativDefintion) {
                 if (rules.has(ruleName)) {
@@ -343,4 +344,4 @@ WSP            =  SP / HTAB
                     ; white space
 `
 
-export const CORE_RULES = parseRules(CORE_RULES_GRAMMAR)
+export const CORE_RULES = parseRules(CORE_RULES_GRAMMAR, true)

@@ -11,6 +11,11 @@ export interface TokenStreamLease {
      * Release this claim on a portion of the stream
      */
     release(): void
+
+    /**
+     * Get the value of this token lease
+     */
+    getValue(): string
 }
 
 function pushStringIntoStream(string: string, stream: TokenStream): void {
@@ -30,6 +35,9 @@ class StringStreamLease implements TokenStreamLease {
         pushStringIntoStream(this.value, this.stream)
         //TODO: better clean up?
         this.value = undefined
+    }
+    getValue(): string {
+        return this.value
     }
 }
 

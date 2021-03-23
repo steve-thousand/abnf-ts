@@ -1,5 +1,5 @@
 import { TokenStream, TokenStreamLease, TokenStreamPredicate, LiteralPredicate, RangePredicate } from './reader';
-import { RuleSyntaxNode, TokenSyntaxNode, NodeArray } from './ast'
+import { SyntaxNode, RuleSyntaxNode, NodeArray, ProtoTokenSyntaxNode } from './ast'
 
 export type RuleMap = Map<string, Rule>
 
@@ -130,7 +130,12 @@ abstract class PredicateElement extends RuleElement {
     consume(stream: TokenStream, rules: RuleMap): NodeArray {
         const lease: TokenStreamLease = stream.consume(this.predicate)
         if (lease !== null) {
-            return new NodeArray(new TokenSyntaxNode(lease))
+            const tokenNode: ProtoTokenSyntaxNode = new class extends ProtoTokenSyntaxNode {
+                getStreamLease(): TokenStreamLease {
+                    return lease
+                }
+            }(null, lease.getValue())
+            return new NodeArray(tokenNode)
         } else {
             return null
         }
@@ -205,6 +210,43 @@ export class Repetition extends RuleElement {
 }
 
 /**
+ * TODO: CONTROVERSIAL!!!
+ * @param childrenNodes 
+ * @param rules 
+ * @returns 
+ */
+function reduceChildren(childrenNodes: NodeArray, ruleName: string, rules: RuleMap): SyntaxNode {
+    let allTokens = true
+    const tokenStr = []
+    for (let childNode of childrenNodes) {
+        if (!(childNode instanceof ProtoTokenSyntaxNode) ||
+            (childNode.getRule() !== null && !rules.get(childNode.getRule()).isCore())) {
+            allTokens = false
+        } else {
+            tokenStr.push(childNode.getValue())
+        }
+    }
+    if (allTokens) {
+        //TODO: is this cool or awful
+        const node = new class extends ProtoTokenSyntaxNode {
+            getStreamLease(): TokenStreamLease {
+                throw new Error('Method not implemented.');
+            }
+            release(): void {
+                childrenNodes.release()
+            }
+        }(ruleName, tokenStr.join(""))
+        return node
+    } else {
+        const node = new RuleSyntaxNode(ruleName)
+        for (let childNode of childrenNodes) {
+            node.withChild(childNode)
+        }
+        return node
+    }
+}
+
+/**
  * TODO: uhhh should these consume in the same way as the elements???
  * Maybe syntax nodes can only be constructed when a Rule is matched, not a rule element.
  */
@@ -212,10 +254,12 @@ export class Rule {
 
     name: string
     definition: RuleElement
+    private _isCore: boolean
 
-    constructor(name: string, definition: RuleElement) {
+    constructor(name: string, definition: RuleElement, isCore: boolean = false) {
         this.name = name
         this.definition = definition
+        this._isCore = isCore
     }
 
     /**
@@ -223,16 +267,12 @@ export class Rule {
      * @param stream {@link TokenStream} to attemp to consume
      * @return an AST node that claims a lease on a matching portion of the stream. null, if no match found
      */
-    consume(stream: TokenStream, rules: RuleMap): RuleSyntaxNode {
+    consume(stream: TokenStream, rules: RuleMap): SyntaxNode {
         let childrenNodes = this.definition.consume(stream, rules)
         if (childrenNodes == null) {
             return null
         } else {
-            const node = new RuleSyntaxNode(this.name)
-            for (let childNode of childrenNodes) {
-                node.addChild(childNode)
-            }
-            return node
+            return reduceChildren(childrenNodes, this.name, rules)
         }
     }
 
@@ -242,5 +282,9 @@ export class Rule {
         } else {
             this.definition = new Alternative([this.definition, alternativeRule.definition])
         }
+    }
+
+    isCore(): boolean {
+        return this._isCore
     }
 }
