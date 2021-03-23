@@ -19,21 +19,21 @@ export class RuleRef extends RuleElement {
     ruleName: string
 
     constructor(ruleName: string) {
-        super()
-        this.ruleName = ruleName
+      super()
+      this.ruleName = ruleName
     }
 
     consume(stream: TokenStream, rules: RuleMap): NodeArray {
-        if (!rules.has(this.ruleName)) {
-            throw `Failed to find rule by name '${this.ruleName}'`
-        }
-        const rule = rules.get(this.ruleName)
-        const node = rule.consume(stream, rules)
-        if (node === null) {
-            return null;
-        } else {
-            return new NodeArray(node)
-        }
+      if (!rules.has(this.ruleName)) {
+        throw `Failed to find rule by name '${this.ruleName}'`
+      }
+      const rule = rules.get(this.ruleName)
+      const node = rule.consume(stream, rules)
+      if (node === null) {
+        return null;
+      } else {
+        return new NodeArray(node)
+      }
     }
 }
 
@@ -46,23 +46,23 @@ abstract class Sequence extends RuleElement {
     elements: RuleElement[]
 
     constructor(elements: RuleElement[]) {
-        super()
-        this.elements = elements;
+      super()
+      this.elements = elements;
     }
 
     consume(stream: TokenStream, rules: RuleMap): NodeArray {
-        const nodeArray: NodeArray = new NodeArray()
-        for (let element of this.elements) {
-            const childrenNodes = element.consume(stream, rules)
-            if (childrenNodes == null) {
-                //failed to match on this element in the sequence
-                nodeArray.release()
-                return null
-            } else {
-                nodeArray.extend(childrenNodes)
-            }
+      const nodeArray: NodeArray = new NodeArray()
+      for (let element of this.elements) {
+        const childrenNodes = element.consume(stream, rules)
+        if (childrenNodes == null) {
+          //failed to match on this element in the sequence
+          nodeArray.release()
+          return null
+        } else {
+          nodeArray.extend(childrenNodes)
         }
-        return nodeArray
+      }
+      return nodeArray
     }
 }
 
@@ -77,13 +77,13 @@ export class Optional extends Sequence {
     private repetition: Repetition
 
     constructor(elements: RuleElement[]) {
-        super(elements)
-        //an Optional element is equal to an element wrapped in a Repetition of at most 1
-        this.repetition = new Repetition(0, 1, new Group(elements))
+      super(elements)
+      //an Optional element is equal to an element wrapped in a Repetition of at most 1
+      this.repetition = new Repetition(0, 1, new Group(elements))
     }
 
     consume(stream: TokenStream, rules: RuleMap): NodeArray {
-        return this.repetition.consume(stream, rules)
+      return this.repetition.consume(stream, rules)
     }
 }
 
@@ -95,23 +95,23 @@ export class Alternative extends RuleElement {
     alternatives: RuleElement[]
 
     constructor(alternatives: RuleElement[]) {
-        super()
-        this.alternatives = alternatives
+      super()
+      this.alternatives = alternatives
     }
 
     consume(stream: TokenStream, rules: RuleMap): NodeArray {
-        for (let alternative of this.alternatives) {
-            const node = alternative.consume(stream, rules);
-            if (node !== null) {
-                return node
-            }
+      for (let alternative of this.alternatives) {
+        const node = alternative.consume(stream, rules);
+        if (node !== null) {
+          return node
         }
-        //failed to find a match
-        return null
+      }
+      //failed to find a match
+      return null
     }
 
     pushAlternative(ruleElement: RuleElement) {
-        this.alternatives.push(ruleElement)
+      this.alternatives.push(ruleElement)
     }
 }
 
@@ -123,22 +123,22 @@ abstract class PredicateElement extends RuleElement {
     predicate: TokenStreamPredicate
 
     constructor(predicate: TokenStreamPredicate) {
-        super()
-        this.predicate = predicate
+      super()
+      this.predicate = predicate
     }
 
-    consume(stream: TokenStream, rules: RuleMap): NodeArray {
-        const lease: TokenStreamLease = stream.consume(this.predicate)
-        if (lease !== null) {
-            const tokenNode: ProtoTokenSyntaxNode = new class extends ProtoTokenSyntaxNode {
-                getStreamLease(): TokenStreamLease {
-                    return lease
-                }
-            }(null, lease.getValue())
-            return new NodeArray(tokenNode)
-        } else {
-            return null
-        }
+    consume(stream: TokenStream): NodeArray {
+      const lease: TokenStreamLease = stream.consume(this.predicate)
+      if (lease !== null) {
+        const tokenNode: ProtoTokenSyntaxNode = new class extends ProtoTokenSyntaxNode {
+          getStreamLease(): TokenStreamLease {
+            return lease
+          }
+        }(null, lease.getValue())
+        return new NodeArray(tokenNode)
+      } else {
+        return null
+      }
     }
 }
 
@@ -146,18 +146,18 @@ abstract class PredicateElement extends RuleElement {
  * Represents a literal character sequence that must be matched exactly.
  */
 export class Literal extends PredicateElement {
-    constructor(value: string) {
-        super(new LiteralPredicate(value))
-    }
+  constructor(value: string) {
+    super(new LiteralPredicate(value))
+  }
 }
 
 /**
  * Represents a decimal range that a character must fall within, inclusive.
  */
 export class CharRange extends PredicateElement {
-    constructor(minimum: number, maximum: number) {
-        super(new RangePredicate(minimum, maximum))
-    }
+  constructor(minimum: number, maximum: number) {
+    super(new RangePredicate(minimum, maximum))
+  }
 }
 
 /**
@@ -171,10 +171,10 @@ export class Repetition extends RuleElement {
     element: RuleElement
 
     constructor(atleast: number, atMost: number, element: RuleElement) {
-        super()
-        this.atleast = atleast
-        this.atMost = atMost
-        this.element = element
+      super()
+      this.atleast = atleast
+      this.atMost = atMost
+      this.element = element
     }
 
     /**
@@ -183,29 +183,25 @@ export class Repetition extends RuleElement {
      * @override
      */
     consume(stream: TokenStream, rules: RuleMap): NodeArray {
-        let matched = 0
-        const nodeArray: NodeArray = new NodeArray()
-        while (true) {
-            //exit early if we have reached the maximum amount
-            if (matched >= this.atMost) {
-                break
-            }
-            const childrenNodes = this.element.consume(stream, rules)
-            if (childrenNodes == null) {
-                break
-            } else {
-                nodeArray.extend(childrenNodes)
-            }
-            matched++
-        }
-
-        //release and return null if we have not met the minimum requirement
-        if (matched < this.atleast || matched > this.atMost) {
-            nodeArray.release()
-            return null
+      let matched = 0
+      const nodeArray: NodeArray = new NodeArray()
+      while (matched < this.atMost) {
+        const childrenNodes = this.element.consume(stream, rules)
+        if (childrenNodes == null) {
+          break
         } else {
-            return nodeArray
+          nodeArray.extend(childrenNodes)
         }
+        matched++
+      }
+
+      //release and return null if we have not met the minimum requirement
+      if (matched < this.atleast || matched > this.atMost) {
+        nodeArray.release()
+        return null
+      } else {
+        return nodeArray
+      }
     }
 }
 
@@ -216,34 +212,34 @@ export class Repetition extends RuleElement {
  * @returns 
  */
 function reduceChildren(childrenNodes: NodeArray, ruleName: string, rules: RuleMap): SyntaxNode {
-    let allTokens = true
-    const tokenStr = []
-    for (let childNode of childrenNodes) {
-        if (!(childNode instanceof ProtoTokenSyntaxNode) ||
+  let allTokens = true
+  const tokenStr = []
+  for (let childNode of childrenNodes) {
+    if (!(childNode instanceof ProtoTokenSyntaxNode) ||
             (childNode.getRule() !== null && !rules.get(childNode.getRule()).isCore())) {
-            allTokens = false
-        } else {
-            tokenStr.push(childNode.getValue())
-        }
-    }
-    if (allTokens) {
-        //TODO: is this cool or awful
-        const node = new class extends ProtoTokenSyntaxNode {
-            getStreamLease(): TokenStreamLease {
-                throw new Error('Method not implemented.');
-            }
-            release(): void {
-                childrenNodes.release()
-            }
-        }(ruleName, tokenStr.join(""))
-        return node
+      allTokens = false
     } else {
-        const node = new RuleSyntaxNode(ruleName)
-        for (let childNode of childrenNodes) {
-            node.withChild(childNode)
-        }
-        return node
+      tokenStr.push(childNode.getValue())
     }
+  }
+  if (allTokens) {
+    //TODO: is this cool or awful
+    const node = new class extends ProtoTokenSyntaxNode {
+      getStreamLease(): TokenStreamLease {
+        throw new Error('Method not implemented.');
+      }
+      release(): void {
+        childrenNodes.release()
+      }
+    }(ruleName, tokenStr.join(''))
+    return node
+  } else {
+    const node = new RuleSyntaxNode(ruleName)
+    for (let childNode of childrenNodes) {
+      node.withChild(childNode)
+    }
+    return node
+  }
 }
 
 /**
@@ -257,9 +253,9 @@ export class Rule {
     private _isCore: boolean
 
     constructor(name: string, definition: RuleElement, isCore: boolean = false) {
-        this.name = name
-        this.definition = definition
-        this._isCore = isCore
+      this.name = name
+      this.definition = definition
+      this._isCore = isCore
     }
 
     /**
@@ -268,23 +264,23 @@ export class Rule {
      * @return an AST node that claims a lease on a matching portion of the stream. null, if no match found
      */
     consume(stream: TokenStream, rules: RuleMap): SyntaxNode {
-        let childrenNodes = this.definition.consume(stream, rules)
-        if (childrenNodes == null) {
-            return null
-        } else {
-            return reduceChildren(childrenNodes, this.name, rules)
-        }
+      let childrenNodes = this.definition.consume(stream, rules)
+      if (childrenNodes == null) {
+        return null
+      } else {
+        return reduceChildren(childrenNodes, this.name, rules)
+      }
     }
 
     addAlternativeDefinition(alternativeRule: Rule) {
-        if (this.definition instanceof Alternative) {
-            (<Alternative>this.definition).pushAlternative(alternativeRule.definition)
-        } else {
-            this.definition = new Alternative([this.definition, alternativeRule.definition])
-        }
+      if (this.definition instanceof Alternative) {
+        (<Alternative>this.definition).pushAlternative(alternativeRule.definition)
+      } else {
+        this.definition = new Alternative([this.definition, alternativeRule.definition])
+      }
     }
 
     isCore(): boolean {
-        return this._isCore
+      return this._isCore
     }
 }

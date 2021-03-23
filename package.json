@@ -4,8 +4,9 @@
   "description": "Backus-Naur grammar parser",
   "main": "index.js",
   "scripts": {
-    "test": "nyc --reporter=lcov mocha -r ts-node/register test/**/*.ts",
-    "coverage": "codecov"
+    "coverage": "codecov",
+    "lint": "eslint --fix src/** test/**",
+    "test": "nyc --reporter=lcov mocha -r ts-node/register test/**/*.ts"
   },
   "repository": {
     "type": "git",
@@ -24,11 +25,14 @@
   "devDependencies": {
     "@types/mocha": "^8.0.1",
     "@types/node": "^14.14.34",
+    "@typescript-eslint/eslint-plugin": "^4.19.0",
+    "@typescript-eslint/parser": "^4.19.0",
     "chai": "*",
     "codecov": "^3.8.1",
+    "eslint": "^7.22.0",
     "mocha": "*",
     "nyc": "^15.1.0",
     "ts-node": "^8.10.2",
-    "typescript": "^3.9.7"
+    "typescript": "^3.9.9"
   }
 }

@@ -1,291 +1,290 @@
-import * as abnf from "./abnf"
-import { TokenStream } from "./reader";
+import * as abnf from './abnf'
+import { TokenStream } from './reader';
 import { SyntaxNode } from './ast';
 
 export interface Parser {
-    parse(stream: TokenStream, ruleName: string): SyntaxNode
+  parse(stream: TokenStream, ruleName: string): SyntaxNode
 }
 
 export function generateParser(grammar: string): Parser {
-    const rules: abnf.RuleMap = parseRules(grammar)
-    const includingCoreRules: abnf.RuleMap = new Map
-    rules.forEach((value: abnf.Rule, key: string) => {
-        includingCoreRules.set(key, value)
-    });
-    CORE_RULES.forEach((value: abnf.Rule, key: string) => {
-        includingCoreRules.set(key, value)
-    });
-    return {
-        parse: function (stream: TokenStream, ruleName: string): SyntaxNode {
-            //ugh.
-            const rootRule: abnf.Rule = new abnf.Rule('root', new abnf.RuleRef(ruleName))
-            const node = rootRule.consume(stream, includingCoreRules)
-            if (stream.isEmpty()) {
-                SyntaxNode.finalize(node)
-                return node.getChildren()[0]
-            } else {
-                return null;
-            }
-        }
+  const rules: abnf.RuleMap = parseRules(grammar)
+  const includingCoreRules: abnf.RuleMap = new Map
+  rules.forEach((value: abnf.Rule, key: string) => {
+    includingCoreRules.set(key, value)
+  });
+  CORE_RULES.forEach((value: abnf.Rule, key: string) => {
+    includingCoreRules.set(key, value)
+  });
+  return {
+    parse: function (stream: TokenStream, ruleName: string): SyntaxNode {
+      //ugh.
+      const rootRule: abnf.Rule = new abnf.Rule('root', new abnf.RuleRef(ruleName))
+      const node = rootRule.consume(stream, includingCoreRules)
+      if (stream.isEmpty()) {
+        SyntaxNode.finalize(node)
+        return node.getChildren()[0]
+      } else {
+        return null;
+      }
     }
+  }
 }
 
 export function parseRules(grammar: string, isCore: boolean = false): Map<string, abnf.Rule> {
-    const rulesMap: abnf.RuleMap = new Map()
-    const ruleStrings = grammar.split("\n");
-    for (let ruleStr of ruleStrings) {
-        parseRule(ruleStr, rulesMap, isCore);
-    }
-    return rulesMap
+  const rulesMap: abnf.RuleMap = new Map()
+  const ruleStrings = grammar.split('\n');
+  for (let ruleStr of ruleStrings) {
+    parseRule(ruleStr, rulesMap, isCore);
+  }
+  return rulesMap
 }
 
 function parseRule(ruleDef: string, rules: abnf.RuleMap, isCore: boolean) {
-    if (ruleDef.indexOf("=") === -1) {
-        //no def on this line
-        return null
-    }
+  if (ruleDef.indexOf('=') === -1) {
+    //no def on this line
+    return null
+  }
 
-    const isAlternativDefintion = ruleDef.indexOf("=/") !== -1
-    const ruleParts = ruleDef.split(/=\/?/)
-    const ruleName = ruleParts[0].trim()
-    try {
-        const elements = parseElements(ruleParts[1].trim())
-        const rule = new abnf.Rule(ruleName, elements.length == 1 ? elements[0] : new abnf.Group(elements), isCore)
-        if (rule !== null) {
-            if (isAlternativDefintion) {
-                if (rules.has(ruleName)) {
-                    rules.get(ruleName).addAlternativeDefinition(rule)
-                } else {
-                    throw 'Rule "${ruleName}" defined as an alternative definition, but no original definition exists.'
-                }
-            } else {
-                rules.set(rule.name, rule)
-            }
+  const isAlternativDefintion = ruleDef.indexOf('=/') !== -1
+  const ruleParts = ruleDef.split(/=\/?/)
+  const ruleName = ruleParts[0].trim()
+  try {
+    const elements = parseElements(ruleParts[1].trim())
+    const rule = new abnf.Rule(ruleName, elements.length == 1 ? elements[0] : new abnf.Group(elements), isCore)
+    if (rule !== null) {
+      if (isAlternativDefintion) {
+        if (rules.has(ruleName)) {
+          rules.get(ruleName).addAlternativeDefinition(rule)
+        } else {
+          throw 'Rule "${ruleName}" defined as an alternative definition, but no original definition exists.'
         }
-    } catch (error) {
-        throw `Failed to parse rule ${ruleName} due to: ${error}`
+      } else {
+        rules.set(rule.name, rule)
+      }
     }
+  } catch (error) {
+    throw `Failed to parse rule ${ruleName} due to: ${error}`
+  }
 }
 
 type CrawlState = {
-    index: number
+  index: number
 }
 
 type RepetitionState = {
-    atLeast: number
-    atMost: number
+  atLeast: number
+  atMost: number
 }
 
 function consumeNumberValue(crawlState: CrawlState, elementsString: string, base: number) {
-    const digitStr = []
-    let digitFunction
-    switch (base) {
-        case 2:
-            digitFunction = isBinaryDigit
-        case 10:
-            digitFunction = isDigit
-            break
-        case 16:
-            digitFunction = isHexDigit
-            break
-    }
-    while (true) {
-        if (digitFunction(elementsString[crawlState.index])) {
-            digitStr.push(elementsString[crawlState.index])
-            crawlState.index++
-        } else {
-            break
-        }
-    }
-    return parseInt(digitStr.join(""), base)
+  const digitStr = []
+  let digitFunction
+  switch (base) {
+    case 2:
+      digitFunction = isBinaryDigit
+      break
+    case 10:
+      digitFunction = isDigit
+      break
+    case 16:
+      digitFunction = isHexDigit
+      break
+  }
+  while (digitFunction(elementsString[crawlState.index])) {
+    digitStr.push(elementsString[crawlState.index])
+    crawlState.index++
+  }
+  return parseInt(digitStr.join(''), base)
 }
 
 function parseElements(elementsString: string, crawlState: CrawlState = { index: 0 }, terminateOn = undefined): abnf.RuleElement[] {
-    const elements = []
-    const alternative_indices: number[] = []
-    let repetitionState: RepetitionState = null
-    while (crawlState.index < elementsString.length) {
-        const char = elementsString[crawlState.index]
-        if (char === terminateOn) {
+  const elements = []
+  const alternative_indices: number[] = []
+  let repetitionState: RepetitionState = null
+  while (crawlState.index < elementsString.length) {
+    const char = elementsString[crawlState.index]
+    if (char === terminateOn) {
+      break
+    }
+    let element: abnf.RuleElement
+    let innerElements: abnf.RuleElement[]
+    switch (char) {
+      case ';':
+        //comment, this line is done
+        crawlState.index = elementsString.length
+        break
+      case '"': {
+        //string
+        //TODO: smarter?
+        const string = []
+        crawlState.index++
+        while (elementsString[crawlState.index] != '"') {
+          string.push(elementsString[crawlState.index])
+          crawlState.index++
+        }
+        element = new abnf.Literal(string.join(''))
+      } break
+      case '0':
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9':
+      case '*': {
+        //repetition
+
+        //build atLeast number
+        let atLeastStr = []
+        while (isDigit(elementsString[crawlState.index])) {
+          atLeastStr.push(elementsString[crawlState.index])
+          crawlState.index++
+        }
+        let atLeast = atLeastStr.length > 0 ? parseInt(atLeastStr.join('')) : 0
+
+        let atMost
+        if (elementsString[crawlState.index] == '*') {
+          crawlState.index++
+
+          //build atLeast number
+          let atMostStr = []
+          while (isDigit(elementsString[crawlState.index])) {
+            atMostStr.push(elementsString[crawlState.index])
+            crawlState.index++
+          }
+          crawlState.index--
+
+          atMost = atMostStr.length > 0 ? parseInt(atMostStr.join('')) : Infinity
+        } else {
+          crawlState.index--
+          atMost = atLeast
+        }
+        repetitionState = {
+          atLeast: atLeast,
+          atMost: atMost
+        }
+
+        break
+      }
+      case '[':
+        //option
+        crawlState.index++
+        innerElements = parseElements(elementsString, crawlState, ']')
+        element = new abnf.Optional(innerElements)
+        break
+      case '(':
+        //group
+        crawlState.index++
+        innerElements = parseElements(elementsString, crawlState, ')')
+        element = new abnf.Group(innerElements)
+        break
+      case '/':
+        //alternative
+        alternative_indices.push(elements.length)
+        break
+      case '%': {
+        // character value or range
+        crawlState.index++
+        let base: number
+        switch (elementsString[crawlState.index]) {
+          case 'b':
+            base = 2
+            break
+          case 'd':
+            base = 10
+            break
+          case 'x':
+            base = 16
             break
         }
-        let element: abnf.RuleElement
-        let innerElements: abnf.RuleElement[]
-        switch (char) {
-            case ";":
-                //comment, this line is done
-                crawlState.index = elementsString.length
-                break
-            case "\"":
-                //string
-                //TODO: smarter?
-                const string = []
-                crawlState.index++
-                while (elementsString[crawlState.index] != "\"") {
-                    string.push(elementsString[crawlState.index])
-                    crawlState.index++
-                }
-                element = new abnf.Literal(string.join(""))
-                break
-            case "0":
-            case "1":
-            case "2":
-            case "3":
-            case "4":
-            case "5":
-            case "6":
-            case "7":
-            case "8":
-            case "9":
-            case "*":
-                //repetition
-
-                //build atLeast number
-                let atLeastStr = []
-                while (isDigit(elementsString[crawlState.index])) {
-                    atLeastStr.push(elementsString[crawlState.index])
-                    crawlState.index++
-                }
-                let atLeast = atLeastStr.length > 0 ? parseInt(atLeastStr.join("")) : 0
-
-                let atMost
-                if (elementsString[crawlState.index] == "*") {
-                    crawlState.index++
-
-                    //build atLeast number
-                    let atMostStr = []
-                    while (isDigit(elementsString[crawlState.index])) {
-                        atMostStr.push(elementsString[crawlState.index])
-                        crawlState.index++
-                    }
-                    crawlState.index--
-
-                    atMost = atMostStr.length > 0 ? parseInt(atMostStr.join("")) : Infinity
-                } else {
-                    crawlState.index--
-                    atMost = atLeast
-                }
-                repetitionState = {
-                    atLeast: atLeast,
-                    atMost: atMost
-                }
-
-                break
-            case "[":
-                //option
-                crawlState.index++
-                innerElements = parseElements(elementsString, crawlState, "]")
-                element = new abnf.Optional(innerElements)
-                break
-            case "(":
-                //group
-                crawlState.index++
-                innerElements = parseElements(elementsString, crawlState, ")")
-                element = new abnf.Group(innerElements)
-                break
-            case "/":
-                //alternative
-                alternative_indices.push(elements.length)
-                break
-            case "%":
-                // character value or range
-                crawlState.index++
-                let base: number
-                switch (elementsString[crawlState.index]) {
-                    case 'b':
-                        base = 2
-                        break
-                    case 'd':
-                        base = 10
-                        break
-                    case 'x':
-                        base = 16
-                        break
-                }
-                crawlState.index++
-                const value: number = consumeNumberValue(crawlState, elementsString, base);
-                if (elementsString[crawlState.index] === "-") {
-                    crawlState.index++
-                    const nextValue = consumeNumberValue(crawlState, elementsString, base)
-                    element = new abnf.CharRange(value, nextValue)
-                } else {
-                    element = new abnf.CharRange(value, value)
-                }
-
-                break
-            default:
-                //if no other rules apply, we are probably crawling over a rule name
-                if (isAlpha(char)) {
-                    let ruleNameStr = []
-                    ruleNameStr.push(char)
-                    crawlState.index++
-                    while (isAlpha(elementsString[crawlState.index]) ||
-                        isDigit(elementsString[crawlState.index]) ||
-                        elementsString[crawlState.index] === "-") {
-                        ruleNameStr.push(elementsString[crawlState.index])
-                        crawlState.index++
-                    }
-                    crawlState.index--
-                    const ruleName = ruleNameStr.join("")
-                    element = new abnf.RuleRef(ruleName)
-                }
-        }
-
-        if (element) {
-
-            if (repetitionState) {
-                elements.push(new abnf.Repetition(
-                    repetitionState.atLeast,
-                    repetitionState.atMost,
-                    element
-                ))
-                repetitionState = null
-            } else {
-                elements.push(element)
-            }
-        }
-
         crawlState.index++
-    }
-
-    if (alternative_indices.length > 0) {
-        let lastIndex = 0
-        const alternativeRuleSets = []
-        for (let alternative_index of alternative_indices) {
-            const slice = elements.slice(lastIndex, alternative_index)
-            if (slice.length == 1) {
-                alternativeRuleSets.push(slice[0])
-            } else {
-                alternativeRuleSets.push(new abnf.Group(slice))
-            }
-            lastIndex = alternative_index
-        }
-        const slice = elements.slice(lastIndex)
-        if (slice.length == 1) {
-            alternativeRuleSets.push(slice[0])
+        const value: number = consumeNumberValue(crawlState, elementsString, base);
+        if (elementsString[crawlState.index] === '-') {
+          crawlState.index++
+          const nextValue = consumeNumberValue(crawlState, elementsString, base)
+          element = new abnf.CharRange(value, nextValue)
         } else {
-            alternativeRuleSets.push(new abnf.Group(slice))
+          element = new abnf.CharRange(value, value)
         }
-        return [new abnf.Alternative(alternativeRuleSets)]
+
+        break
+      }
+      default:
+        //if no other rules apply, we are probably crawling over a rule name
+        if (isAlpha(char)) {
+          let ruleNameStr = []
+          ruleNameStr.push(char)
+          crawlState.index++
+          while (isAlpha(elementsString[crawlState.index]) ||
+            isDigit(elementsString[crawlState.index]) ||
+            elementsString[crawlState.index] === '-') {
+            ruleNameStr.push(elementsString[crawlState.index])
+            crawlState.index++
+          }
+          crawlState.index--
+          const ruleName = ruleNameStr.join('')
+          element = new abnf.RuleRef(ruleName)
+        }
     }
 
-    return elements
+    if (element) {
+
+      if (repetitionState) {
+        elements.push(new abnf.Repetition(
+          repetitionState.atLeast,
+          repetitionState.atMost,
+          element
+        ))
+        repetitionState = null
+      } else {
+        elements.push(element)
+      }
+    }
+
+    crawlState.index++
+  }
+
+  if (alternative_indices.length > 0) {
+    let lastIndex = 0
+    const alternativeRuleSets = []
+    for (let alternative_index of alternative_indices) {
+      const slice = elements.slice(lastIndex, alternative_index)
+      if (slice.length == 1) {
+        alternativeRuleSets.push(slice[0])
+      } else {
+        alternativeRuleSets.push(new abnf.Group(slice))
+      }
+      lastIndex = alternative_index
+    }
+    const slice = elements.slice(lastIndex)
+    if (slice.length == 1) {
+      alternativeRuleSets.push(slice[0])
+    } else {
+      alternativeRuleSets.push(new abnf.Group(slice))
+    }
+    return [new abnf.Alternative(alternativeRuleSets)]
+  }
+
+  return elements
 }
 
 function isAlpha(char: string) {
-    return (/^[a-zA-Z]$/).test(char)
+  return (/^[a-zA-Z]$/).test(char)
 }
 
 function isBinaryDigit(char: string): boolean {
-    return (/^[0-1]$/).test(char)
+  return (/^[0-1]$/).test(char)
 }
 
 function isDigit(char: string): boolean {
-    return (/^[0-9]$/).test(char)
+  return (/^[0-9]$/).test(char)
 }
 
 function isHexDigit(char: string): boolean {
-    return (/^[0-9A-Fa-f]$/).test(char)
+  return (/^[0-9A-Fa-f]$/).test(char)
 }
 
 //https://tools.ietf.org/html/rfc5234#appendix-B.1
